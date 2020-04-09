@@ -12,6 +12,51 @@ type Validatable interface {
 	Validate() error
 }
 
+type ErrFieldTagValidation struct {
+	field   string
+	message string
+	err     error
+	tag     string
+}
+
+type ErrValidate struct {
+	field string
+	err   error
+}
+
+func newErrFieldTagValidation(field validator.FieldError, message string) *ErrFieldTagValidation {
+	return &ErrFieldTagValidation{
+		field:   field.Namespace(),
+		message: message,
+		err:     field.(error),
+		tag:     field.Tag(),
+	}
+}
+
+func newErrValidate(field string, err error) *ErrValidate {
+	return &ErrValidate{
+		field: field,
+		err:   err,
+	}
+}
+
+func (e *ErrFieldTagValidation) Error() string {
+	return fmt.Sprintf(`%s: %s`, e.field, e.message)
+}
+
+func (e *ErrValidate) Error() string {
+	//TODO Get field name for extra context (need to update the recursive validate function to supply the path of the err)
+	return fmt.Sprintf(`%s`, e.err)
+}
+
+func (e *ErrFieldTagValidation) Unwrap() error {
+	return e.err
+}
+
+func (e *ErrValidate) Unwrap() error {
+	return e.err
+}
+
 func (c *Config) Validate(configStruct interface{}) error {
 
 	var multierr error
@@ -23,9 +68,8 @@ func (c *Config) Validate(configStruct interface{}) error {
 		if err != nil {
 			errorLists, ok := err.(validator.ValidationErrors)
 			if ok {
-				errs := errorLists.Translate(c.validatorTrans)
-				for _, value := range errs {
-					multierr = multierror.Append(multierr, fmt.Errorf(value))
+				for _, err := range errorLists {
+					multierr = multierror.Append(multierr, newErrFieldTagValidation(err, err.Translate(c.validatorTrans)))
 				}
 			} else {
 				multierr = multierror.Append(multierr, err)
@@ -106,7 +150,7 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 		if ok {
 			err := validatable.Validate()
 			if err != nil {
-				multierr = multierror.Append(multierr, err)
+				multierr = multierror.Append(multierr, newErrValidate("", err))
 			}
 		}
 	}

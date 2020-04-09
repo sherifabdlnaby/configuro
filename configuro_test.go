@@ -1,12 +1,15 @@
 package configuro_test
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/go-playground/validator"
 	"github.com/sherifabdlnaby/configuro"
 )
 
@@ -21,15 +24,25 @@ type Nested struct {
 	Number      int
 	NumberList1 []int
 	NumberList2 []int
+	KeyList     []Key
+	KeyMap      map[string]Key
+	IntMap      map[string]int
 }
 
 type Key struct {
 	A     string
 	B     string
-	C     string
+	C     string `validate:"required"`
 	D     string
 	E     string
 	EMPTY string
+}
+
+func (k Key) Validate() error {
+	if k.A != k.B {
+		return fmt.Errorf("failed to validate key because A != B")
+	}
+	return nil
 }
 
 func TestEnvVarsRenaming(t *testing.T) {
@@ -428,6 +441,7 @@ func TestExpandEnvVar(t *testing.T) {
 	_ = os.Setenv("NUMBER", "123456")
 	_ = os.Setenv("NUMBERLIST1", "1,2,3")
 	_ = os.Setenv("NUMBERLIST2", "[\"4\",5,6]")
+	_ = os.Setenv("INTMAP", `{"a":123, "b": "456"}`)
 
 	// Write Config to File
 	configFileYaml.WriteString(`
@@ -442,7 +456,7 @@ nested:
     number: ${NUMBER}
     numberList1: ${NUMBERLIST1}
     numberList2: ${NUMBERLIST2}
-
+    IntMap: ${INTMAP}
     `)
 
 	envOnlyWithoutPrefix, err := configuro.NewConfigx(
@@ -477,6 +491,7 @@ nested:
 				Number:      123456,
 				NumberList1: []int{1, 2, 3},
 				NumberList2: []int{4, 5, 6},
+				IntMap:      map[string]int{"a": 123, "b": 456},
 			},
 		}},
 	}
@@ -497,6 +512,8 @@ nested:
 				example.Nested.Key_A.A != test.expected.Nested.Key_A.A ||
 				example.Nested.Key_A.B != test.expected.Nested.Key_A.B ||
 				example.Nested.Number != test.expected.Nested.Number ||
+				example.Nested.IntMap["a"] != test.expected.Nested.IntMap["a"] ||
+				example.Nested.IntMap["b"] != test.expected.Nested.IntMap["b"] ||
 				!equalSlice(example.Nested.NumberList1, test.expected.Nested.NumberList1) ||
 				!equalSlice(example.Nested.NumberList2, test.expected.Nested.NumberList2) {
 				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
@@ -580,6 +597,112 @@ Object:
 			}
 		})
 	}
+}
+
+func TestValidateByTag(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+    key:
+        a: A
+        b: A
+    `)
+
+	configLoader, err := configuro.NewConfigx(
+		configuro.Validate(true, true, true),
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	example := &Example{}
+	err = configLoader.Load(example)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var fieldErr validator.FieldError
+	var tagErr *configuro.ErrFieldTagValidation
+	err = configLoader.Validate(example)
+	isTagErr := errors.As(err, &tagErr)
+	if !isTagErr {
+		t.Error("Validation with Tags was bypassed.")
+	}
+
+	_ = tagErr.Error()
+
+	isFieldErr := errors.As(tagErr, &fieldErr)
+	if !isFieldErr {
+		t.Error("Not a field error.")
+	}
+
+}
+
+func TestValidateByInterface(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+    key:
+        a: A
+        b: B
+        c: C
+    key_a:
+        a: A
+        b: B
+        c: C
+    key-b:
+        a: A
+        b: B
+        c: C
+    `)
+
+	configLoader, err := configuro.NewConfigx(
+		configuro.Validate(true, true, true),
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	example := &Example{}
+	err = configLoader.Load(example)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var validateError *configuro.ErrValidate
+
+	err = configLoader.Validate(example)
+	isValidateErr := errors.As(err, &validateError)
+
+	if !isValidateErr {
+		t.Error("Validation using validator interface was bypassed.")
+	}
+
+	// Extra Sanity Check that Unwrap is working
+	e := validateError.Unwrap()
+	if e == nil {
+		t.Error("ErrValidate unwrap not working.")
+	}
+
+	_ = validateError.Error()
 }
 
 func equalSlice(a, b []int) bool {

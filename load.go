@@ -120,7 +120,7 @@ func stringJSONObjToMapOrStruct() func(f reflect.Kind, t reflect.Kind, data inte
 
 		var ret interface{}
 		if t == reflect.Map {
-			jsonMap := make(map[interface{}]interface{})
+			jsonMap := make(map[string]interface{})
 			err := json.Unmarshal([]byte(raw), &jsonMap)
 			if err != nil {
 				return raw, fmt.Errorf("couldn't map string-ifed Json to Map: %s", err.Error())
