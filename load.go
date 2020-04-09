@@ -26,7 +26,7 @@ func (c *Config) Load(configStruct interface{}) error {
 	c.bindEnvs(configStruct)
 
 	// Unmarshalling
-	err = c.viper.Unmarshal(configStruct, c.decodeHook, SetTagName(c.tag))
+	err = c.viper.Unmarshal(configStruct, c.decodeHook, setTagName(c.tag))
 
 	if err != nil {
 		return fmt.Errorf("error unmarshalling config: %w", err)
@@ -44,6 +44,9 @@ func (c *Config) bindEnvs(iface interface{}, parts ...string) {
 	}
 	for i := 0; i < ift.NumField(); i++ {
 		fieldv := ifv.Field(i)
+		if !fieldv.CanInterface() {
+			return
+		}
 		t := ift.Field(i)
 		name := strings.ToLower(t.Name)
 		tag, ok := t.Tag.Lookup(c.tag)
@@ -60,7 +63,7 @@ func (c *Config) bindEnvs(iface interface{}, parts ...string) {
 	}
 }
 
-func SetTagName(hook string) viper.DecoderConfigOption {
+func setTagName(hook string) viper.DecoderConfigOption {
 	return func(c *mapstructure.DecoderConfig) {
 		c.TagName = hook
 	}

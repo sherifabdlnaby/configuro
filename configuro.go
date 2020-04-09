@@ -8,14 +8,12 @@ import (
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	ens "github.com/go-playground/validator/translations/en"
-	"github.com/hashicorp/go-multierror"
 	"github.com/joho/godotenv"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"gopkg.in/go-playground/validator.v9"
 )
 
-type Error multierror.Error
 type Config struct {
 	envLoad                bool
 	envPrefix              string
@@ -95,9 +93,9 @@ func (c *Config) initialize() error {
 
 			// Viper add the `prefix` + '_' to the Key *before* passing it to Key Replacer,causing the replacer to replace the '_' with '__' when it shouldn't.
 			// by adding the Prefix to the replacer twice, this will let the replacer escapes the prefix as it scans through the string.
-			c.viper.SetEnvKeyReplacer(strings.NewReplacer(envPrefix+"_", envPrefix+"_", "_", "__", ".", "_", "-", "_"))
+			c.viper.SetEnvKeyReplacer(strings.NewReplacer(envPrefix+"_", envPrefix+"_", "_", "__", ".", "_", "-", "__"))
 		} else {
-			c.viper.SetEnvKeyReplacer(strings.NewReplacer("_", "__", ".", "_", "-", "_"))
+			c.viper.SetEnvKeyReplacer(strings.NewReplacer("_", "__", ".", "_", "-", "__"))
 		}
 
 		c.viper.AutomaticEnv()
@@ -118,7 +116,7 @@ func (c *Config) initialize() error {
 		// Config Dir Path
 		configFileDir := c.configFileDir
 
-		// Override with Env ?
+		// Override with Nested ?
 		if c.configDirEnv {
 			configDirEnvValue, isSet := os.LookupEnv(c.configDirEnvName)
 			if isSet {
@@ -198,7 +196,7 @@ func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string, overr
 	return func(h *Config) {
 		h.configFileLoad = Enabled
 		h.configFileName = fileName
-		h.configFileDir = fileDirPath
+		h.configFileDir = fileDirPath + "/"
 		h.configDirEnv = overrideDirWithEnv
 		h.configDirEnvName = configDirEnvName
 	}
