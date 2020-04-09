@@ -1,3 +1,4 @@
+//nolint
 package configuro_test
 
 import (
@@ -28,6 +29,7 @@ type Nested struct {
 	KeyMap      map[string]Key
 	KeySlice    []Key
 	IntMap      map[string]int
+	private     string
 }
 
 type Key struct {
@@ -55,7 +57,7 @@ func TestEnvVarsRenaming(t *testing.T) {
 	_ = os.Setenv("NESTED_KEY__B_A", "BA")
 	_ = os.Setenv("NESTED_KEY__B_B", "BB")
 
-	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(false, "", "", false, ""),
@@ -114,7 +116,7 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 	_ = os.Setenv("NESTED_KEY_B", "B")
 	_ = os.Setenv("NESTED_KEY_EMPTY", "")
 
-	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(false, "", "", false, ""),
@@ -123,7 +125,7 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 		t.Error(err)
 	}
 
-	envOnlyWithPrefix, err := configuro.NewConfigx(
+	envOnlyWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(false, "", "", false, ""),
@@ -185,7 +187,7 @@ NESTED_KEY_B: B
 NESTED_KEY_EMPTY:
     `)
 
-	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, ""),
 		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
 		configuro.LoadFromConfigFile(false, "", "", false, ""),
@@ -194,7 +196,7 @@ NESTED_KEY_EMPTY:
 		t.Error(err)
 	}
 
-	envOnlyWithPrefix, err := configuro.NewConfigx(
+	envOnlyWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
 		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
 		configuro.LoadFromConfigFile(false, "", "", false, ""),
@@ -257,7 +259,7 @@ nested:
         b: BB
     `)
 
-	configLoader, err := configuro.NewConfigx(
+	configLoader, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
@@ -372,7 +374,7 @@ nested:
 	_ = os.Setenv("CONFIG_DIR", filepath.Dir(configFileOverloaded1.Name()))
 	_ = os.Setenv("PREFIX_CONFIG_DIR", filepath.Dir(configFileOverloaded2.Name()))
 
-	configLoaderWithoutPrefix, err := configuro.NewConfigx(
+	configLoaderWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), true, "CONFIG_DIR"),
@@ -381,7 +383,7 @@ nested:
 		t.Error(err)
 	}
 
-	configLoaderWithPrefix, err := configuro.NewConfigx(
+	configLoaderWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, "PREFIX"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), true, "CONFIG_DIR"),
@@ -460,7 +462,7 @@ nested:
     IntMap: ${INTMAP}
     `)
 
-	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.ExpandEnvironmentVariables(true),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
@@ -547,7 +549,7 @@ Object:
 		Object Object
 	}
 
-	configLoaderDefaultTag, err := configuro.NewConfigx(
+	configLoaderDefaultTag, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
@@ -556,7 +558,7 @@ Object:
 		t.Error(err)
 	}
 
-	configLoaderNewTag, err := configuro.NewConfigx(
+	configLoaderNewTag, err := configuro.NewConfig(
 		configuro.Tag("newtag"),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
@@ -615,7 +617,7 @@ nested:
         b: A
     `)
 
-	configLoader, err := configuro.NewConfigx(
+	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, true),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
@@ -663,7 +665,7 @@ nested:
         b: B
     `)
 
-	configLoader, err := configuro.NewConfigx(
+	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
@@ -716,7 +718,7 @@ nested:
       b: TWO
     `)
 
-	configLoader, err := configuro.NewConfigx(
+	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
@@ -767,7 +769,7 @@ nested:
       b: TWO
     `)
 
-	configLoader, err := configuro.NewConfigx(
+	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),

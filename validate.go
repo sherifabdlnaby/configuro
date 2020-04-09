@@ -8,10 +8,14 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
+//Validatable Any Type that Implements this interface will have its Validate() function called when validating config.
 type Validatable interface {
 	Validate() error
 }
 
+// TODO make them interfaces ?
+
+//ErrFieldTagValidation Error if validation failed by a tag
 type ErrFieldTagValidation struct {
 	field   string
 	message string
@@ -19,6 +23,7 @@ type ErrFieldTagValidation struct {
 	tag     string
 }
 
+//ErrValidate Error if validation failed by Validatable Interface.
 type ErrValidate struct {
 	field string
 	err   error
@@ -49,14 +54,17 @@ func (e *ErrValidate) Error() string {
 	return fmt.Sprintf(`%s`, e.err)
 }
 
+//Unwrap to support errors IS|AS
 func (e *ErrFieldTagValidation) Unwrap() error {
 	return e.err
 }
 
+//Unwrap to support errors IS|AS
 func (e *ErrValidate) Unwrap() error {
 	return e.err
 }
 
+//Validate Validate Struct using Tags and Any Fields that Implements the validatable interface.
 func (c *Config) Validate(configStruct interface{}) error {
 
 	var multierr error

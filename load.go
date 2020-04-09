@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+//Load load config into supported struct.
 func (c *Config) Load(configStruct interface{}) error {
 	var err error
 
