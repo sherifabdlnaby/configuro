@@ -151,6 +151,77 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 	}
 }
 
+func TestLoadDotEnv(t *testing.T) {
+
+	dotEnvFile, err := ioutil.TempFile("", "*.env")
+	defer func() {
+		dotEnvFile.Close()
+		os.RemoveAll(dotEnvFile.Name())
+	}()
+
+	// Write Config to File
+	dotEnvFile.WriteString(`
+PREFIX_NESTED_KEY_A: X
+PREFIX_NESTED_KEY_B: Y
+#PREFIX_NESTED_KEY_B: XYZ
+PREFIX_NESTED_EMPTY:
+#PREFIX_NESTED_EMPTY: FD
+NESTED_KEY_A: A
+NESTED_KEY_B: B
+NESTED_KEY_EMPTY:
+    `)
+
+	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+		configuro.LoadFromEnvironmentVariables(true, ""),
+		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
+		configuro.LoadFromConfigFile(false, "", "", false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	envOnlyWithPrefix, err := configuro.NewConfigx(
+		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
+		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
+		configuro.LoadFromConfigFile(false, "", "", false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tests := []struct {
+		name     string
+		config   *configuro.Config
+		expected Example
+	}{
+		{name: "withoutPrefix", config: envOnlyWithoutPrefix, expected: Example{Nested{Key: Key{
+			A:     "A",
+			B:     "B",
+			EMPTY: "",
+		}}}},
+		{name: "withPrefix", config: envOnlyWithPrefix, expected: Example{Nested{Key: Key{
+			A:     "X",
+			B:     "Y",
+			EMPTY: "",
+		}}}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			example := &Example{}
+			err := test.config.Load(example)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if example.Nested.Key.A != test.expected.Nested.Key.A ||
+				example.Nested.Key.B != test.expected.Nested.Key.B ||
+				example.Nested.Key.EMPTY != test.expected.Nested.Key.EMPTY {
+				t.Error("Loaded Values doesn't equal expected values.")
+			}
+		})
+	}
+}
+
 func TestLoadFromFileOnly(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "*.yml")
 	defer func() {
@@ -172,7 +243,7 @@ nested:
         b: BB
     `)
 
-	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+	configLoader, err := configuro.NewConfigx(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
@@ -186,7 +257,7 @@ nested:
 		config   *configuro.Config
 		expected Example
 	}{
-		{name: "withoutPrefix", config: envOnlyWithoutPrefix, expected: Example{
+		{name: "LoadFromFile", config: configLoader, expected: Example{
 			Nested: Nested{
 				Key: Key{
 					A: "A",
@@ -217,6 +288,126 @@ nested:
 				example.Nested.Key_A.B != test.expected.Nested.Key_A.B ||
 				example.Nested.Key_X.A != test.expected.Nested.Key_X.A ||
 				example.Nested.Key_X.B != test.expected.Nested.Key_X.B {
+				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+			}
+		})
+	}
+}
+
+func TestOverloadConfigDirWithEnv(t *testing.T) {
+	err := os.MkdirAll(os.TempDir()+"/conf/", 0777)
+	if err != nil {
+		t.Error(err)
+	}
+	err = os.MkdirAll(os.TempDir()+"/confOverloaded1/", 0777)
+	if err != nil {
+		t.Error(err)
+	}
+
+	err = os.MkdirAll(os.TempDir()+"/confOverloaded2/", 0777)
+	if err != nil {
+		t.Error(err)
+	}
+
+	configFileYaml, err := ioutil.TempFile(os.TempDir()+"/conf/", "*.yml")
+	if err != nil {
+		t.Error(err)
+	}
+
+	configFileOverloaded1, err := os.OpenFile(os.TempDir()+"/confOverloaded1/"+filepath.Base(configFileYaml.Name()), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		t.Error(err)
+	}
+
+	configFileOverloaded2, err := os.OpenFile(os.TempDir()+"/confOverloaded2/"+filepath.Base(configFileYaml.Name()), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		t.Error(err)
+	}
+
+	defer func() {
+		configFileYaml.Close()
+		configFileOverloaded1.Close()
+		configFileOverloaded2.Close()
+		os.RemoveAll(filepath.Base(configFileYaml.Name()))
+		os.RemoveAll(filepath.Base(configFileOverloaded1.Name()))
+		os.RemoveAll(filepath.Base(configFileOverloaded2.Name()))
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+    key:
+        a: AA
+        b: BB
+    `)
+
+	configFileOverloaded1.WriteString(`
+nested:
+    key:
+        a: XX
+        b: YY
+    `)
+
+	configFileOverloaded2.WriteString(`
+nested:
+    key:
+        a: MM
+        b: NN
+    `)
+
+	_ = os.Setenv("CONFIG_DIR", filepath.Dir(configFileOverloaded1.Name()))
+	_ = os.Setenv("PREFIX_CONFIG_DIR", filepath.Dir(configFileOverloaded2.Name()))
+
+	configLoaderWithoutPrefix, err := configuro.NewConfigx(
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), true, "CONFIG_DIR"),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	configLoaderWithPrefix, err := configuro.NewConfigx(
+		configuro.LoadFromEnvironmentVariables(false, "PREFIX"),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), true, "CONFIG_DIR"),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tests := []struct {
+		name     string
+		config   *configuro.Config
+		expected Example
+	}{
+		{name: "WithoutPrefix", config: configLoaderWithoutPrefix, expected: Example{
+			Nested: Nested{
+				Key: Key{
+					A: "XX",
+					B: "YY",
+				},
+			},
+		}},
+		{name: "WithPrefix", config: configLoaderWithPrefix, expected: Example{
+			Nested: Nested{
+				Key: Key{
+					A: "MM",
+					B: "NN",
+				},
+			},
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			example := &Example{}
+			err := test.config.Load(example)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if example.Nested.Key.A != test.expected.Nested.Key.A ||
+				example.Nested.Key.B != test.expected.Nested.Key.B {
 				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
@@ -255,6 +446,7 @@ nested:
     `)
 
 	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+		configuro.ExpandEnvironmentVariables(true),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
