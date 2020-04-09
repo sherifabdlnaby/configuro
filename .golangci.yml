@@ -1,0 +1,48 @@
+run:
+    skip-dirs:
+        - .gen
+
+    skip-files:
+        - ".*_gen\\.go$"
+
+linters-settings:
+    gocyclo:
+        min-complexity: 30
+    goconst:
+        min-len: 2
+        min-occurrences: 2
+    misspell:
+        locale: US
+    golint:
+        min-confidence: 0.8
+    goimports:
+        local-prefixes: rubban
+
+linters:
+    disable-all: true
+    enable:
+        - goconst
+        - gocyclo
+        - golint
+        - govet
+        - gofmt
+        - errcheck
+        - staticcheck
+        - unused
+        - gosimple
+        - structcheck
+        - varcheck
+        - ineffassign
+        - deadcode
+        - unconvert
+        - gosec
+        - golint
+        - bodyclose
+        - misspell
+        - unconvert
+        - unparam
+        - dogsled
+        - goimports
+
+service:
+    golangci-lint-version: 1.21.x

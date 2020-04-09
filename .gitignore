@@ -1,0 +1,38 @@
+### General
+bin
+vendor
+.env
+rubban.yml
+
+### JetBrains template
+# User-specific stuff
+.idea
+
+
+### Windows template
+# Windows thumbnail cache files
+Thumbs.db
+
+### macOS template
+# General
+.DS_Store
+
+# Thumbnails
+._*
+
+### Go template
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+### VisualStudioCode template
+.vscode/*
