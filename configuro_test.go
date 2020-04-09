@@ -15,14 +15,20 @@ type Example struct {
 }
 
 type Nested struct {
-	Key   Key
-	Key_A Key
-	Key_X Key `config:"key-b"`
+	Key         Key
+	Key_A       Key
+	Key_X       Key `config:"key-b"`
+	Number      int
+	NumberList1 []int
+	NumberList2 []int
 }
 
 type Key struct {
 	A     string
 	B     string
+	C     string
+	D     string
+	E     string
 	EMPTY string
 }
 
@@ -217,6 +223,96 @@ nested:
 	}
 }
 
+func TestExpandEnvVar(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	_ = os.Setenv("KEY_A", "AA")
+	_ = os.Setenv("KEY_B", "B")
+	_ = os.Setenv("KEY_D", "")
+	_ = os.Setenv("OBJECT", `{"a":123, "b": "abc"}`)
+	_ = os.Setenv("NUMBER", "123456")
+	_ = os.Setenv("NUMBERLIST1", "1,2,3")
+	_ = os.Setenv("NUMBERLIST2", "[\"4\",5,6]")
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+    key:
+        a: ${KEY_A}
+        b: A${KEY_B}C
+        c: ${KEY_C|defaultC}
+        d: ${KEY_D|defaultD}
+        e: ${KEY_E|}
+    key_a: ${OBJECT}
+    number: ${NUMBER}
+    numberList1: ${NUMBERLIST1}
+    numberList2: ${NUMBERLIST2}
+
+    `)
+
+	envOnlyWithoutPrefix, err := configuro.NewConfigx(
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	tests := []struct {
+		name     string
+		config   *configuro.Config
+		expected Example
+	}{
+		{name: "withoutPrefix", config: envOnlyWithoutPrefix, expected: Example{
+			Nested: Nested{
+				Key: Key{
+					A:     "AA",
+					B:     "ABC",
+					C:     "defaultC",
+					D:     "",
+					E:     "",
+					EMPTY: "",
+				},
+				Key_A: Key{
+					A: "123",
+					B: "abc",
+				},
+				Number:      123456,
+				NumberList1: []int{1, 2, 3},
+				NumberList2: []int{4, 5, 6},
+			},
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			example := &Example{}
+			err := test.config.Load(example)
+			if err != nil {
+				t.Error(err)
+			}
+
+			if example.Nested.Key.A != test.expected.Nested.Key.A ||
+				example.Nested.Key.B != test.expected.Nested.Key.B ||
+				example.Nested.Key.C != test.expected.Nested.Key.C ||
+				example.Nested.Key.D != test.expected.Nested.Key.D ||
+				example.Nested.Key.E != test.expected.Nested.Key.E ||
+				example.Nested.Key.EMPTY != test.expected.Nested.Key.EMPTY ||
+				example.Nested.Key_A.A != test.expected.Nested.Key_A.A ||
+				example.Nested.Key_A.B != test.expected.Nested.Key_A.B ||
+				example.Nested.Number != test.expected.Nested.Number ||
+				!equalSlice(example.Nested.NumberList1, test.expected.Nested.NumberList1) ||
+				!equalSlice(example.Nested.NumberList2, test.expected.Nested.NumberList2) {
+				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+			}
+		})
+	}
+}
+
 func TestChangeTagName(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "*.yml")
 	defer func() {
@@ -292,4 +388,16 @@ Object:
 			}
 		})
 	}
+}
+
+func equalSlice(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
 }

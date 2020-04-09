@@ -131,7 +131,7 @@ func (c *Config) initialize() error {
 	// decoder config
 	DefaultDecodeHookFuncs := []mapstructure.DecodeHookFunc{
 		stringJSONArrayToSlice(),
-		stringJSONObjToMap(),
+		stringJSONObjToMapOrStruct(),
 		mapstructure.StringToTimeDurationHookFunc(),
 		mapstructure.StringToIPHookFunc(),
 	}

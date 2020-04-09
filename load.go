@@ -75,7 +75,7 @@ func stringJSONArrayToSlice() func(f reflect.Kind, t reflect.Kind, data interfac
 		f reflect.Kind,
 		t reflect.Kind,
 		data interface{}) (interface{}, error) {
-		if f != reflect.String || (t != reflect.Map && t != reflect.Slice) {
+		if f != reflect.String || t != reflect.Slice {
 			return data, nil
 		}
 
@@ -104,12 +104,12 @@ func stringJSONArrayToSlice() func(f reflect.Kind, t reflect.Kind, data interfac
 	}
 }
 
-func stringJSONObjToMap() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+func stringJSONObjToMapOrStruct() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
 	return func(
 		f reflect.Kind,
 		t reflect.Kind,
 		data interface{}) (interface{}, error) {
-		if f != reflect.String || (t != reflect.Map && t != reflect.Slice) {
+		if f != reflect.String || (t != reflect.Map && t != reflect.Struct) {
 			return data, nil
 		}
 
@@ -126,8 +126,13 @@ func stringJSONObjToMap() func(f reflect.Kind, t reflect.Kind, data interface{})
 				return raw, fmt.Errorf("couldn't map string-ifed Json to Map: %s", err.Error())
 			}
 			ret = jsonMap
+		} else if t == reflect.Struct {
+			err := json.Unmarshal([]byte(raw), &data)
+			if err != nil {
+				return raw, fmt.Errorf("couldn't map string-ifed Json to Object: %s", err.Error())
+			}
+			ret = data
 		}
-
 		return ret, nil
 	}
 }
