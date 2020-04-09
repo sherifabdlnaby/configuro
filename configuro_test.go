@@ -26,6 +26,7 @@ type Nested struct {
 	NumberList2 []int
 	KeyList     []Key
 	KeyMap      map[string]Key
+	KeySlice    []Key
 	IntMap      map[string]int
 }
 
@@ -40,7 +41,7 @@ type Key struct {
 
 func (k Key) Validate() error {
 	if k.A != k.B {
-		return fmt.Errorf("failed to validate key because A != B")
+		return fmt.Errorf("failed to validate key because A(%s) != B(%s)", k.A, k.B)
 	}
 	return nil
 }
@@ -660,19 +661,114 @@ nested:
     key:
         a: A
         b: B
-        c: C
-    key_a:
-        a: A
-        b: B
-        c: C
-    key-b:
-        a: A
-        b: B
-        c: C
     `)
 
 	configLoader, err := configuro.NewConfigx(
-		configuro.Validate(true, true, true),
+		configuro.Validate(true, true, false),
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	example := &Example{}
+	err = configLoader.Load(example)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var validateError *configuro.ErrValidate
+
+	err = configLoader.Validate(example)
+	isValidateErr := errors.As(err, &validateError)
+
+	if !isValidateErr {
+		t.Error("Validation using validator interface was bypassed.")
+	}
+
+	// Extra Sanity Check that Unwrap is working
+	e := validateError.Unwrap()
+	if e == nil {
+		t.Error("ErrValidate unwrap not working.")
+	}
+
+	_ = validateError.Error()
+}
+
+func TestValidateMaps(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+  KeyMap:
+    One:
+      a: ONE
+      b: ONE
+    Two:
+      a: ONE
+      b: TWO
+    `)
+
+	configLoader, err := configuro.NewConfigx(
+		configuro.Validate(true, true, false),
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+
+	example := &Example{}
+	err = configLoader.Load(example)
+	if err != nil {
+		t.Error(err)
+	}
+
+	var validateError *configuro.ErrValidate
+
+	err = configLoader.Validate(example)
+	isValidateErr := errors.As(err, &validateError)
+
+	if !isValidateErr {
+		t.Error("Validation using validator interface was bypassed.")
+	}
+
+	// Extra Sanity Check that Unwrap is working
+	e := validateError.Unwrap()
+	if e == nil {
+		t.Error("ErrValidate unwrap not working.")
+	}
+
+	_ = validateError.Error()
+}
+
+func TestValidateSlices(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+  KeySlice:
+    - a: ONE
+      b: ONE
+    - a: ONE
+      b: TWO
+    `)
+
+	configLoader, err := configuro.NewConfigx(
+		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
