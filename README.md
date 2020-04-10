@@ -1,14 +1,13 @@
 <p align="center">
 <br/>
 <br/>
-<br/>
 <img width="637px" src="https://user-images.githubusercontent.com/16992394/78989442-e7c1ae80-7b33-11ea-98c6-1d37ed276a3b.png">
 </p>
 <h3 align="center">An opinionated configuration loading and validation framework focused towards Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications.</h3>
 <h6 align="center">Read configurations from Environment Variables exclusively, falls back to config files supporting most common configuration formats. and Supporting Env Expanding and Validation.</h4>
 <p align="center">
-   <a href="http://godoc.org/github.com/sherifabdlnaby/gpool">
-      <img src="https://godoc.org/github.com/sherifabdlnaby/gpool?status.svg" alt="Go Doc">
+   <a href="http://godoc.org/github.com/sherifabdlnaby/configuro">
+      <img src="https://godoc.org/github.com/sherifabdlnaby/configuro?status.svg" alt="Go Doc">
    </a>
    <a>
       <img src="https://img.shields.io/github/v/tag/sherifabdlnaby/configuro?label=release&amp;sort=semver">
