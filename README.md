@@ -1,21 +1,22 @@
 <p align="center">
+<br/>
+<br/>
+<br/>
 <img width="637px" src="https://user-images.githubusercontent.com/16992394/78989442-e7c1ae80-7b33-11ea-98c6-1d37ed276a3b.png">
 </p>
-<h2 align="center">An opinionated configuration loading and validation framework focused towards Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications</h2>
-<h6 align="center">Read configurations from Environment Variables exclusively, falls back to config files supporting most common configuration formats. and Supporting Expanding and Validation</h4>
+<h3 align="center">An opinionated configuration loading and validation framework focused towards Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications.</h3>
+<h6 align="center">Read configurations from Environment Variables exclusively, falls back to config files supporting most common configuration formats. and Supporting Env Expanding and Validation.</h4>
 <p align="center">
    <a>
       <img src="https://img.shields.io/github/v/tag/sherifabdlnaby/configuro?label=release&amp;sort=semver">
     </a>
+   <a>
+      <img src="https://img.shields.io/badge/Go-%3E=v1.13-blue?style=flat&logo=go" alt="Go Version">
+   </a>
     <a>
       <img src="https://github.com/sherifabdlnaby/configuro/workflows/Build/badge.svg">
     </a>
     <a href='https://coveralls.io/github/sherifabdlnaby/configuro'><img src='https://img.shields.io/coveralls/github/sherifabdlnaby/configuro?logo=codecov&logoColor=white' alt='Coverage Status' /></a>
-
-   <a>
-      <img src="https://img.shields.io/badge/Go-%3E=v1.13-blue?style=flat&logo=go" alt="Go Version">
-   </a>
-
    <a href="https://goreportcard.com/report/github.com/sherifabdlnaby/configuro">
       <img src="https://goreportcard.com/badge/github.com/sherifabdlnaby/configuro" alt="Go Report">
    </a>
