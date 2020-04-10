@@ -172,6 +172,9 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 func TestLoadDotEnv(t *testing.T) {
 
 	dotEnvFile, err := ioutil.TempFile("", "*.env")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		dotEnvFile.Close()
 		os.RemoveAll(dotEnvFile.Name())
@@ -244,6 +247,10 @@ NESTED_KEY_EMPTY:
 
 func TestLoadFromFileOnly(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestLoadFromFileOnly*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -309,7 +316,7 @@ nested:
 				example.Nested.Key_A.B != test.expected.Nested.Key_A.B ||
 				example.Nested.Key_X.A != test.expected.Nested.Key_X.A ||
 				example.Nested.Key_X.B != test.expected.Nested.Key_X.B {
-				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
 	}
@@ -431,7 +438,7 @@ nested:
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
 				example.Nested.Key.B != test.expected.Nested.Key.B {
-				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
 	}
@@ -439,6 +446,10 @@ nested:
 
 func TestExpandEnvVar(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestExpandEnvVar*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -527,7 +538,7 @@ nested:
 				example.Nested.IntMap["b"] != test.expected.Nested.IntMap["b"] ||
 				!equalSlice(example.Nested.NumberList1, test.expected.Nested.NumberList1) ||
 				!equalSlice(example.Nested.NumberList2, test.expected.Nested.NumberList2) {
-				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
 	}
@@ -535,6 +546,9 @@ nested:
 
 func TestChangeTagName(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestChangeTagName*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -606,7 +620,7 @@ Object:
 
 			if example.Object.KeyA != test.expected.Object.KeyA ||
 				example.Object.KeyB != test.expected.Object.KeyB {
-				t.Errorf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
 	}
@@ -614,6 +628,9 @@ Object:
 
 func TestValidateByTag(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestValidateByTag*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -663,6 +680,10 @@ nested:
 
 func TestValidateByInterface(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestValidateByInterface*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -713,6 +734,9 @@ nested:
 
 func TestValidateMaps(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestValidateMaps*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -767,6 +791,10 @@ nested:
 
 func TestValidateSlices(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestValidateSlices*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())

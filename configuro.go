@@ -223,7 +223,7 @@ func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string) Confi
 	}
 }
 
-//LoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
+//OverloadConfigPathWithEnv Allow to override Config Dir Path with an Env Variable
 func OverloadConfigPathWithEnv(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
 	return func(h *Config) {
 		h.configDirEnv = overrideDirWithEnv
