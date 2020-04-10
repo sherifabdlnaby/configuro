@@ -29,6 +29,7 @@ type Config struct {
 	validateStopOnFirstErr bool
 	validateRecursive      bool
 	validateUsingTags      bool
+	validateTag            string
 	tag                    string
 	viper                  *viper.Viper
 	validator              *validator.Validate
@@ -68,6 +69,7 @@ func NewConfig(opts ...ConfigOptions) (*Config, error) {
 func defaultConfig() *Config {
 	return &Config{
 		tag:                    "config",
+		validateTag:            "validate",
 		envLoad:                true,
 		envDotFileLoad:         true,
 		envDotFilePath:         "./.env",
@@ -150,6 +152,7 @@ func (c *Config) initialize() error {
 	// Tag validator
 	if c.validateUsingTags {
 		c.validator = validator.New()
+		c.validator.SetTagName(c.validateTag)
 		// Get English Errors
 		uni := ut.New(en.New(), en.New())
 		c.validatorTrans, _ = uni.GetTranslator("en")
@@ -159,11 +162,13 @@ func (c *Config) initialize() error {
 	return nil
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+
 //ConfigOptions Modify Config Options Accordingly
 type ConfigOptions func(*Config)
 
 //LoadFromEnvironmentVariables Load Configuration from Environment Variables if they're set.
-// 	- Prefix Require Enviroment Variables to prefixed with the set prefix (All CAPS)
+// 	- Prefix Require Environment Variables to prefixed with the set prefix (All CAPS)
 // 	- For Nested fields replace `.` with `_` and if key itself has any `_` or `-` replace with `__` (e.g `config.host` to be `CONFIG_HOST`)
 //	- Arrays can be declared in environment variables using
 //		1. comma separated list.
@@ -177,9 +182,10 @@ func LoadFromEnvironmentVariables(Enabled bool, EnvPrefix string) ConfigOptions 
 }
 
 //Tag Change default tag.
-func Tag(tag string) ConfigOptions {
+func Tag(structTag, validateTag string) ConfigOptions {
 	return func(h *Config) {
-		h.tag = tag
+		h.tag = structTag
+		h.validateTag = validateTag
 	}
 }
 
@@ -209,11 +215,17 @@ func Validate(validateStopOnFirstErr, validateRecursive, validateUsingTags bool)
 }
 
 //LoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
-func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string, overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
+func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string) ConfigOptions {
 	return func(h *Config) {
 		h.configFileLoad = Enabled
 		h.configFileName = fileName
 		h.configFileDir = fileDirPath + "/"
+	}
+}
+
+//LoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
+func OverloadConfigPathWithEnv(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
+	return func(h *Config) {
 		h.configDirEnv = overrideDirWithEnv
 		h.configDirEnvName = configDirEnvName
 	}

@@ -60,10 +60,10 @@ func TestEnvVarsRenaming(t *testing.T) {
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(false, "", "", false, ""),
+		configuro.LoadFromConfigFile(false, "", ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -93,7 +93,7 @@ func TestEnvVarsRenaming(t *testing.T) {
 			example := &Example{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
@@ -119,19 +119,21 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(false, "", "", false, ""),
+		configuro.LoadFromConfigFile(false, "", ""),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	envOnlyWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(false, "", "", false, ""),
+		configuro.LoadFromConfigFile(false, "", ""),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -155,13 +157,13 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 			example := &Example{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
 				example.Nested.Key.B != test.expected.Nested.Key.B ||
 				example.Nested.Key.EMPTY != test.expected.Nested.Key.EMPTY {
-				t.Error("Loaded Values doesn't equal expected values.")
+				t.Fatal("Loaded Values doesn't equal expected values.")
 			}
 		})
 	}
@@ -190,19 +192,21 @@ NESTED_KEY_EMPTY:
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, ""),
 		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
-		configuro.LoadFromConfigFile(false, "", "", false, ""),
+		configuro.LoadFromConfigFile(false, "", ""),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	envOnlyWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
 		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
-		configuro.LoadFromConfigFile(false, "", "", false, ""),
+		configuro.LoadFromConfigFile(false, "", ""),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -226,20 +230,20 @@ NESTED_KEY_EMPTY:
 			example := &Example{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
 				example.Nested.Key.B != test.expected.Nested.Key.B ||
 				example.Nested.Key.EMPTY != test.expected.Nested.Key.EMPTY {
-				t.Error("Loaded Values doesn't equal expected values.")
+				t.Fatal("Loaded Values doesn't equal expected values.")
 			}
 		})
 	}
 }
 
 func TestLoadFromFileOnly(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestLoadFromFileOnly*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -262,10 +266,11 @@ nested:
 	configLoader, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -295,7 +300,7 @@ nested:
 			example := &Example{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
@@ -313,40 +318,40 @@ nested:
 func TestOverloadConfigDirWithEnv(t *testing.T) {
 	err := os.MkdirAll(os.TempDir()+"/conf/", 0777)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	err = os.MkdirAll(os.TempDir()+"/confOverloaded1/", 0777)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	err = os.MkdirAll(os.TempDir()+"/confOverloaded2/", 0777)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
-	configFileYaml, err := ioutil.TempFile(os.TempDir()+"/conf/", "*.yml")
+	configFileYaml, err := ioutil.TempFile(os.TempDir()+"/conf/", "TestOverloadConfigDirWithEnv*.yml")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	configFileOverloaded1, err := os.OpenFile(os.TempDir()+"/confOverloaded1/"+filepath.Base(configFileYaml.Name()), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	configFileOverloaded2, err := os.OpenFile(os.TempDir()+"/confOverloaded2/"+filepath.Base(configFileYaml.Name()), os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	defer func() {
 		configFileYaml.Close()
 		configFileOverloaded1.Close()
 		configFileOverloaded2.Close()
-		os.RemoveAll(filepath.Base(configFileYaml.Name()))
-		os.RemoveAll(filepath.Base(configFileOverloaded1.Name()))
-		os.RemoveAll(filepath.Base(configFileOverloaded2.Name()))
+		os.RemoveAll(configFileYaml.Name())
+		os.RemoveAll(configFileOverloaded1.Name())
+		os.RemoveAll(configFileOverloaded2.Name())
 	}()
 
 	// Write Config to File
@@ -377,19 +382,21 @@ nested:
 	configLoaderWithoutPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), true, "CONFIG_DIR"),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(true, "CONFIG_DIR"),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	configLoaderWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, "PREFIX"),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), true, "CONFIG_DIR"),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(true, "CONFIG_DIR"),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -419,7 +426,7 @@ nested:
 			example := &Example{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
@@ -431,7 +438,7 @@ nested:
 }
 
 func TestExpandEnvVar(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestExpandEnvVar*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -466,10 +473,11 @@ nested:
 		configuro.ExpandEnvironmentVariables(true),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -503,7 +511,7 @@ nested:
 			example := &Example{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
@@ -526,7 +534,7 @@ nested:
 }
 
 func TestChangeTagName(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestChangeTagName*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -552,20 +560,22 @@ Object:
 	configLoaderDefaultTag, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	configLoaderNewTag, err := configuro.NewConfig(
-		configuro.Tag("newtag"),
+		configuro.Tag("newtag", "validate"),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	tests := []struct {
@@ -591,7 +601,7 @@ Object:
 			example := &Obj{}
 			err := test.config.Load(example)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if example.Object.KeyA != test.expected.Object.KeyA ||
@@ -603,7 +613,7 @@ Object:
 }
 
 func TestValidateByTag(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestValidateByTag*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -621,16 +631,17 @@ nested:
 		configuro.Validate(true, true, true),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	example := &Example{}
 	err = configLoader.Load(example)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	var fieldErr validator.FieldError
@@ -638,20 +649,20 @@ nested:
 	err = configLoader.Validate(example)
 	isTagErr := errors.As(err, &tagErr)
 	if !isTagErr {
-		t.Error("Validation with Tags was bypassed.")
+		t.Fatal("Validation with Tags was bypassed.")
 	}
 
 	_ = tagErr.Error()
 
 	isFieldErr := errors.As(tagErr, &fieldErr)
 	if !isFieldErr {
-		t.Error("Not a field error.")
+		t.Fatal("Not a field error.")
 	}
 
 }
 
 func TestValidateByInterface(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestValidateByInterface*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -669,16 +680,17 @@ nested:
 		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	example := &Example{}
 	err = configLoader.Load(example)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	var validateError *configuro.ErrValidate
@@ -687,20 +699,20 @@ nested:
 	isValidateErr := errors.As(err, &validateError)
 
 	if !isValidateErr {
-		t.Error("Validation using validator interface was bypassed.")
+		t.Fatal("Validation using validator interface was bypassed.")
 	}
 
 	// Extra Sanity Check that Unwrap is working
 	e := validateError.Unwrap()
 	if e == nil {
-		t.Error("ErrValidate unwrap not working.")
+		t.Fatal("ErrValidate unwrap not working.")
 	}
 
 	_ = validateError.Error()
 }
 
 func TestValidateMaps(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestValidateMaps*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -722,16 +734,17 @@ nested:
 		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	example := &Example{}
 	err = configLoader.Load(example)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	var validateError *configuro.ErrValidate
@@ -740,20 +753,20 @@ nested:
 	isValidateErr := errors.As(err, &validateError)
 
 	if !isValidateErr {
-		t.Error("Validation using validator interface was bypassed.")
+		t.Fatal("Validation using validator interface was bypassed.")
 	}
 
 	// Extra Sanity Check that Unwrap is working
 	e := validateError.Unwrap()
 	if e == nil {
-		t.Error("ErrValidate unwrap not working.")
+		t.Fatal("ErrValidate unwrap not working.")
 	}
 
 	_ = validateError.Error()
 }
 
 func TestValidateSlices(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestValidateSlices*.yml")
 	defer func() {
 		configFileYaml.Close()
 		os.RemoveAll(configFileYaml.Name())
@@ -773,16 +786,17 @@ nested:
 		configuro.Validate(true, true, false),
 		configuro.LoadFromEnvironmentVariables(false, ""),
 		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name()), false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
 	)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	example := &Example{}
 	err = configLoader.Load(example)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	var validateError *configuro.ErrValidate
@@ -791,13 +805,13 @@ nested:
 	isValidateErr := errors.As(err, &validateError)
 
 	if !isValidateErr {
-		t.Error("Validation using validator interface was bypassed.")
+		t.Fatal("Validation using validator interface was bypassed.")
 	}
 
 	// Extra Sanity Check that Unwrap is working
 	e := validateError.Unwrap()
 	if e == nil {
-		t.Error("ErrValidate unwrap not working.")
+		t.Fatal("ErrValidate unwrap not working.")
 	}
 
 	_ = validateError.Error()
