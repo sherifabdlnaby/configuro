@@ -38,7 +38,6 @@ type Config struct {
 }
 
 //NewConfig Create config Loader/Validator according to options.
-// TODO Describe every Option here.
 func NewConfig(opts ...ConfigOptions) (*Config, error) {
 	configWithDefaults := defaultConfig()
 
@@ -116,7 +115,7 @@ func (c *Config) initialize() error {
 
 	if c.configFileLoad {
 		// Config Name
-		c.viper.SetConfigName(strings.ToLower(c.configFileName))
+		c.viper.SetConfigName(c.configFileName)
 
 		// Config Dir Path
 		configFileDir := c.configFileDir
