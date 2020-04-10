@@ -8,8 +8,14 @@
       <img src="https://img.shields.io/github/v/tag/sherifabdlnaby/configuro?label=release&amp;sort=semver">
     </a>
     <a>
-      <img src="https://github.com/sherifabdlnaby/configuro/workflows/Test/badge.svg">
+      <img src="https://github.com/sherifabdlnaby/configuro/workflows/Build/badge.svg">
     </a>
+    <a href='https://coveralls.io/github/sherifabdlnaby/configuro'><img src='https://img.shields.io/coveralls/github/sherifabdlnaby/configuro?logo=codecov&logoColor=white' alt='Coverage Status' /></a>
+
+   <a>
+      <img src="https://img.shields.io/badge/Go-%3E=v1.13-blue?style=flat&logo=go" alt="Go Version">
+   </a>
+
    <a href="https://goreportcard.com/report/github.com/sherifabdlnaby/configuro">
       <img src="https://goreportcard.com/badge/github.com/sherifabdlnaby/configuro" alt="Go Report">
    </a>
