@@ -15,8 +15,6 @@ linters-settings:
         locale: US
     golint:
         min-confidence: 0.8
-    goimports:
-        local-prefixes: rubban
 
 linters:
     disable-all: true
