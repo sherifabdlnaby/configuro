@@ -2,6 +2,7 @@
 <img width="637px" src="https://user-images.githubusercontent.com/16992394/78989442-e7c1ae80-7b33-11ea-98c6-1d37ed276a3b.png">
 </p>
 <h2 align="center">An opinionated configuration loading and validation framework focused towards Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications</h2>
+<h6 align="center">Read configurations from Environment Variables exclusively, falls back to config files supporting most common configuration formats. and Supporting Expanding and Validation</h4>
 <p align="center">
    <a>
       <img src="https://img.shields.io/github/v/tag/sherifabdlnaby/configuro?label=release&amp;sort=semver">
@@ -126,7 +127,7 @@ The above settings can be changed upon constructing the configuro object via pas
     configuro.LoadDotEnvFile(enabled, envDotFilePath)
 ```
 
-### 4. Expanding Environment Variables in Config
+### 5. Expanding Environment Variables in Config
 
 - `${ENV}` and `${ENV|default}` expressions are evaluated and expanded if the Environment Variable is set or with the default value if defined, otherwise it leaves it as it is.
 ```
@@ -142,7 +143,7 @@ The above settings can be changed upon constructing the configuro object via pas
     configuro.ExpandEnvironmentVariables(enabled)
 ```
 
-### 5. Validate Struct
+### 6. Validate Struct
 
 ```go
     err := config.Validate(configStruct)
@@ -163,7 +164,7 @@ The above settings can be changed upon constructing the configuro object via pas
     configuro.Validate(validateStopOnFirstErr, validateRecursive, validateUsingTags)
 ```
 
-### 6. Miscellaneous
+### 7. Miscellaneous
 
 - `config` and `validate` tag can be renamed using `configuro.Tag(structTag, validateTag)` construction option.
 
