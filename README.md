@@ -6,6 +6,9 @@
 <h3 align="center">An opinionated configuration loading and validation framework focused towards Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications.</h3>
 <h6 align="center">Read configurations from Environment Variables exclusively, falls back to config files supporting most common configuration formats. and Supporting Env Expanding and Validation.</h4>
 <p align="center">
+   <a href="https://github.com/avelino/awesome-go#configuration">
+      <img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Go">
+   </a>
    <a href="http://godoc.org/github.com/sherifabdlnaby/configuro">
       <img src="https://godoc.org/github.com/sherifabdlnaby/configuro?status.svg" alt="Go Doc">
    </a>
@@ -21,9 +24,6 @@
     <a href='https://coveralls.io/github/sherifabdlnaby/configuro'><img src='https://img.shields.io/coveralls/github/sherifabdlnaby/configuro?logo=codecov&logoColor=white' alt='Coverage Status' /></a>
    <a href="https://goreportcard.com/report/github.com/sherifabdlnaby/configuro">
       <img src="https://goreportcard.com/badge/github.com/sherifabdlnaby/configuro" alt="Go Report">
-   </a>
-   <a href="https://github.com/sherifabdlnaby/configuro/issues">
-        <img src="https://img.shields.io/github/issues/sherifabdlnaby/configuro.svg" alt="GitHub issues">
    </a>
    <a href="https://raw.githubusercontent.com/sherifabdlnaby/configuro/blob/master/LICENSE">
       <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="GitHub license">
