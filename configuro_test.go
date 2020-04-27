@@ -245,6 +245,44 @@ NESTED_KEY_EMPTY:
 	}
 }
 
+func TestLoadFromFileThatDoesntExist(t *testing.T) {
+	configLoader, err := configuro.NewConfig(
+		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, "zzconfig", "."),
+		configuro.OverloadConfigPathWithEnv(false, ""),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		config   *configuro.Config
+		expected Example
+	}{
+		{name: "LoadFromFileThatDoesntExist", config: configLoader, expected: Example{}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			example := &Example{}
+			err := test.config.Load(example)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if example.Nested.Key.A != test.expected.Nested.Key.A ||
+				example.Nested.Key.B != test.expected.Nested.Key.B ||
+				example.Nested.Key_A.A != test.expected.Nested.Key_A.A ||
+				example.Nested.Key_A.B != test.expected.Nested.Key_A.B ||
+				example.Nested.Key_X.A != test.expected.Nested.Key_X.A ||
+				example.Nested.Key_X.B != test.expected.Nested.Key_X.B {
+				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+			}
+		})
+	}
+}
+
 func TestLoadFromFileOnly(t *testing.T) {
 	configFileYaml, err := ioutil.TempFile("", "TestLoadFromFileOnly*.yml")
 	if err != nil {

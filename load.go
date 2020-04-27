@@ -19,7 +19,9 @@ func (c *Config) Load(configStruct interface{}) error {
 	if c.configFileLoad {
 		err := c.viper.ReadInConfig()
 		if err != nil {
-			return fmt.Errorf("error reading config data: %w", err)
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				return fmt.Errorf("error reading config data: %w", err)
+			}
 		}
 	}
 
