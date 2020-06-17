@@ -2,7 +2,6 @@
 package configuro_test
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -10,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-playground/validator"
 	"github.com/sherifabdlnaby/configuro"
+	"go.uber.org/multierr"
 )
 
 type Example struct {
@@ -699,21 +698,18 @@ nested:
 		t.Fatal(err)
 	}
 
-	var fieldErr validator.FieldError
-	var tagErr *configuro.ErrFieldTagValidation
 	err = configLoader.Validate(example)
-	isTagErr := errors.As(err, &tagErr)
-	if !isTagErr {
+	Errs := multierr.Errors(err)
+	if Errs == nil {
 		t.Fatal("Validation with Tags was bypassed.")
+	} else {
+		for _, err := range Errs {
+			_, ok := err.(*configuro.ErrFieldTagValidation)
+			if !ok {
+				t.Fatal("Validation with Tags Returned Wrong Error Type.")
+			}
+		}
 	}
-
-	_ = tagErr.Error()
-
-	isFieldErr := errors.As(tagErr, &fieldErr)
-	if !isFieldErr {
-		t.Fatal("Not a field error.")
-	}
-
 }
 
 func TestValidateByInterface(t *testing.T) {
@@ -752,22 +748,18 @@ nested:
 		t.Fatal(err)
 	}
 
-	var validateError *configuro.ErrValidate
-
 	err = configLoader.Validate(example)
-	isValidateErr := errors.As(err, &validateError)
-
-	if !isValidateErr {
+	Errs := multierr.Errors(err)
+	if Errs == nil {
 		t.Fatal("Validation using validator interface was bypassed.")
+	} else {
+		for _, err := range Errs {
+			_, ok := err.(*configuro.ErrValidate)
+			if !ok {
+				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
+			}
+		}
 	}
-
-	// Extra Sanity Check that Unwrap is working
-	e := validateError.Unwrap()
-	if e == nil {
-		t.Fatal("ErrValidate unwrap not working.")
-	}
-
-	_ = validateError.Error()
 }
 
 func TestValidateMaps(t *testing.T) {
@@ -809,22 +801,18 @@ nested:
 		t.Fatal(err)
 	}
 
-	var validateError *configuro.ErrValidate
-
 	err = configLoader.Validate(example)
-	isValidateErr := errors.As(err, &validateError)
-
-	if !isValidateErr {
+	Errs := multierr.Errors(err)
+	if Errs == nil {
 		t.Fatal("Validation using validator interface was bypassed.")
+	} else {
+		for _, err := range Errs {
+			_, ok := err.(*configuro.ErrValidate)
+			if !ok {
+				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
+			}
+		}
 	}
-
-	// Extra Sanity Check that Unwrap is working
-	e := validateError.Unwrap()
-	if e == nil {
-		t.Fatal("ErrValidate unwrap not working.")
-	}
-
-	_ = validateError.Error()
 }
 
 func TestValidateSlices(t *testing.T) {
@@ -865,22 +853,18 @@ nested:
 		t.Fatal(err)
 	}
 
-	var validateError *configuro.ErrValidate
-
 	err = configLoader.Validate(example)
-	isValidateErr := errors.As(err, &validateError)
-
-	if !isValidateErr {
+	Errs := multierr.Errors(err)
+	if Errs == nil {
 		t.Fatal("Validation using validator interface was bypassed.")
+	} else {
+		for _, err := range Errs {
+			_, ok := err.(*configuro.ErrValidate)
+			if !ok {
+				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
+			}
+		}
 	}
-
-	// Extra Sanity Check that Unwrap is working
-	e := validateError.Unwrap()
-	if e == nil {
-		t.Fatal("ErrValidate unwrap not working.")
-	}
-
-	_ = validateError.Error()
 }
 
 func equalSlice(a, b []int) bool {

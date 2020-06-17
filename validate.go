@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/hashicorp/go-multierror"
+	"go.uber.org/multierr"
 	"gopkg.in/go-playground/validator.v9"
 )
 
@@ -67,7 +67,7 @@ func (e *ErrValidate) Unwrap() error {
 //Validate Validate Struct using Tags and Any Fields that Implements the validatable interface.
 func (c *Config) Validate(configStruct interface{}) error {
 
-	var multierr error
+	var errs error
 
 	if c.validateUsingTags {
 		// validate tags
@@ -76,27 +76,27 @@ func (c *Config) Validate(configStruct interface{}) error {
 		if err != nil {
 			errorLists, ok := err.(validator.ValidationErrors)
 			if ok {
-				for _, err := range errorLists {
-					multierr = multierror.Append(multierr, newErrFieldTagValidation(err, err.Translate(c.validatorTrans)))
+				for _, tagErr := range errorLists {
+					// Add translated Tag error.
+					errs = multierr.Append(errs, newErrFieldTagValidation(tagErr, tagErr.Translate(c.validatorTrans)))
 				}
 			} else {
-				multierr = multierror.Append(multierr, err)
+				errs = multierr.Append(errs, err)
 			}
-
 		}
 	}
 
 	err := recursiveValidate(configStruct, c.validateRecursive, c.validateStopOnFirstErr)
 	if err != nil {
-		multierr = multierror.Append(multierr, err)
+		errs = multierr.Append(errs, err)
 	}
 
-	return multierr
+	return errs
 }
 
 func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) error {
 
-	var multierr error
+	var errs error
 
 	if obj == nil {
 		return nil
@@ -116,9 +116,9 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 				if field.CanInterface() {
 					err := recursiveValidate(field.Interface(), recursive, returnOnFirstErr)
 					if err != nil {
-						multierr = multierror.Append(multierr, err)
+						errs = multierr.Append(errs, err)
 						if returnOnFirstErr {
-							return multierr
+							return errs
 						}
 					}
 				}
@@ -130,9 +130,9 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 			if v.CanInterface() {
 				err := recursiveValidate(v.Interface(), recursive, returnOnFirstErr)
 				if err != nil {
-					multierr = multierror.Append(multierr, err)
+					errs = multierr.Append(errs, err)
 					if returnOnFirstErr {
-						return multierr
+						return err
 					}
 				}
 			}
@@ -143,9 +143,9 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 			if v.CanInterface() {
 				err := recursiveValidate(v.Interface(), recursive, returnOnFirstErr)
 				if err != nil {
-					multierr = multierror.Append(multierr, err)
+					errs = multierr.Append(errs, err)
 					if returnOnFirstErr {
-						return multierr
+						return err
 					}
 				}
 			}
@@ -158,10 +158,10 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 		if ok {
 			err := validatable.Validate()
 			if err != nil {
-				multierr = multierror.Append(multierr, newErrValidate("", err))
+				errs = multierr.Append(errs, newErrValidate("", err))
 			}
 		}
 	}
 
-	return multierr
+	return errs
 }

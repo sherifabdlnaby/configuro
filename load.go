@@ -20,7 +20,7 @@ func (c *Config) Load(configStruct interface{}) error {
 		err := c.viper.ReadInConfig()
 		if err != nil {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-				return fmt.Errorf("error reading config data: %w", err)
+				return fmt.Errorf("error reading config data: %v", err)
 			}
 		}
 	}
@@ -32,7 +32,7 @@ func (c *Config) Load(configStruct interface{}) error {
 	err = c.viper.Unmarshal(configStruct, c.decodeHook, setTagName(c.tag))
 
 	if err != nil {
-		return fmt.Errorf("error unmarshalling config: %w", err)
+		return fmt.Errorf("error unmarshalling config: %v", err)
 	}
 
 	return nil
