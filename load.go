@@ -25,8 +25,17 @@ func (c *Config) Load(configStruct interface{}) error {
 		}
 	}
 
-	// BindEnvvars
-	c.bindEnvs(configStruct)
+	// Bind Env Vars
+	envKVRegex := regexp.MustCompile("^" + c.envPrefix + "_" + "(.*)=.*$")
+	Envvars := os.Environ()
+	for _, env := range Envvars {
+		match := envKVRegex.FindSubmatch([]byte(env))
+		if match != nil {
+			matchUnescaped := strings.NewReplacer("__", "_", "_", ".")
+			matchUnS := matchUnescaped.Replace(string(match[1]))
+			c.viper.BindEnv(matchUnS)
+		}
+	}
 
 	// Unmarshalling
 	err = c.viper.Unmarshal(configStruct, c.decodeHook, setTagName(c.tag))

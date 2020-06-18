@@ -19,8 +19,8 @@ type Example struct {
 
 type Nested struct {
 	Key         Key
-	Key_A       Key
-	Key_X       Key `config:"key-b"`
+	Key_A       *Key
+	Key_X       *Key `config:"key-b"`
 	Number      int
 	NumberList1 []int
 	NumberList2 []int
@@ -40,6 +40,12 @@ type Key struct {
 	EMPTY string
 }
 
+type test struct {
+	name     string
+	config   *configuro.Config
+	expected Example
+}
+
 func (k Key) Validate() error {
 	if k.A != k.B {
 		return fmt.Errorf("failed to validate key because A(%s) != B(%s)", k.A, k.B)
@@ -47,17 +53,10 @@ func (k Key) Validate() error {
 	return nil
 }
 
-func TestEnvVarsRenaming(t *testing.T) {
-	// Set osEnvVars
-	_ = os.Setenv("NESTED_KEY_A", "A")
-	_ = os.Setenv("NESTED_KEY_B", "B")
-	_ = os.Setenv("NESTED_KEY__A_A", "AA")
-	_ = os.Setenv("NESTED_KEY__A_B", "AB")
-	_ = os.Setenv("NESTED_KEY__B_A", "BA")
-	_ = os.Setenv("NESTED_KEY__B_B", "BB")
+func TestEnvVarsEscaping(t *testing.T) {
 
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, ""),
+		configuro.LoadFromEnvironmentVariables(true, "CONFIG"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(false, "", ""),
 	)
@@ -65,22 +64,28 @@ func TestEnvVarsRenaming(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
+	// Set Values
+	_ = os.Setenv("CONFIG_NESTED_KEY_A", "A")
+	_ = os.Setenv("CONFIG_NESTED_KEY_B", "B")
+	_ = os.Setenv("CONFIG_NESTED_KEY__A_A", "AA")
+	_ = os.Setenv("CONFIG_NESTED_KEY__A_B", "AB")
+	_ = os.Setenv("CONFIG_NESTED_KEY-B_A", "BA")
+	_ = os.Setenv("CONFIG_NESTED_KEY-B_B", "BB")
+	_ = os.Setenv("CONFIG_NESTED_KEY-B_B", "BB")
+	_ = os.Setenv("CONFIG_NESTED_KEY-B_B", "BB")
+
+	tests := []test{
 		{name: "Renaming", config: envOnlyWithoutPrefix, expected: Example{
 			Nested: Nested{
 				Key: Key{
 					A: "A",
 					B: "B",
 				},
-				Key_A: Key{
+				Key_A: &Key{
 					A: "AA",
 					B: "AB",
 				},
-				Key_X: Key{
+				Key_X: &Key{
 					A: "BA",
 					B: "BB",
 				},
@@ -111,12 +116,12 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 	// Set osEnvVars
 	_ = os.Setenv("PREFIX_NESTED_KEY_A", "X")
 	_ = os.Setenv("PREFIX_NESTED_KEY_B", "Y")
-	_ = os.Setenv("NESTED_KEY_A", "A")
-	_ = os.Setenv("NESTED_KEY_B", "B")
-	_ = os.Setenv("NESTED_KEY_EMPTY", "")
+	_ = os.Setenv("CONFIG_NESTED_KEY_A", "A")
+	_ = os.Setenv("CONFIG_NESTED_KEY_B", "B")
+	_ = os.Setenv("CONFIG_NESTED_KEY_EMPTY", "")
 
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, ""),
+		configuro.LoadFromEnvironmentVariables(true, "CONFIG"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(false, "", ""),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -186,13 +191,13 @@ PREFIX_NESTED_KEY_B: Y
 #PREFIX_NESTED_KEY_B: XYZ
 PREFIX_NESTED_EMPTY:
 #PREFIX_NESTED_EMPTY: FD
-NESTED_KEY_A: A
-NESTED_KEY_B: B
-NESTED_KEY_EMPTY:
+CONFIG_NESTED_KEY_A: A
+CONFIG_NESTED_KEY_B: B
+CONFIG_NESTED_KEY_EMPTY:
     `)
 
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, ""),
+		configuro.LoadFromEnvironmentVariables(true, "CONFIG"),
 		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
 		configuro.LoadFromConfigFile(false, "", ""),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -246,7 +251,7 @@ NESTED_KEY_EMPTY:
 
 func TestLoadFromFileThatDoesntExist(t *testing.T) {
 	configLoader, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "XXX"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, "zzconfig", "."),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -272,10 +277,8 @@ func TestLoadFromFileThatDoesntExist(t *testing.T) {
 
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
 				example.Nested.Key.B != test.expected.Nested.Key.B ||
-				example.Nested.Key_A.A != test.expected.Nested.Key_A.A ||
-				example.Nested.Key_A.B != test.expected.Nested.Key_A.B ||
-				example.Nested.Key_X.A != test.expected.Nested.Key_X.A ||
-				example.Nested.Key_X.B != test.expected.Nested.Key_X.B {
+				example.Nested.Key_A != test.expected.Nested.Key_A ||
+				example.Nested.Key_X != test.expected.Nested.Key_X {
 				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
@@ -308,7 +311,7 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -328,11 +331,11 @@ nested:
 					A: "A",
 					B: "B",
 				},
-				Key_A: Key{
+				Key_A: &Key{
 					A: "AA",
 					B: "AB",
 				},
-				Key_X: Key{
+				Key_X: &Key{
 					A: "BA",
 					B: "BB",
 				},
@@ -420,11 +423,11 @@ nested:
         b: NN
     `)
 
-	_ = os.Setenv("CONFIG_DIR", filepath.Dir(configFileOverloaded1.Name()))
+	_ = os.Setenv("CONFIG_CONFIG_DIR", filepath.Dir(configFileOverloaded1.Name()))
 	_ = os.Setenv("PREFIX_CONFIG_DIR", filepath.Dir(configFileOverloaded2.Name()))
 
 	configLoaderWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "CONFIG"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(true, "CONFIG_DIR"),
@@ -519,7 +522,7 @@ nested:
 
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
 		configuro.ExpandEnvironmentVariables(true),
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -543,7 +546,7 @@ nested:
 					E:     "",
 					EMPTY: "",
 				},
-				Key_A: Key{
+				Key_A: &Key{
 					A: "123",
 					B: "abc",
 				},
@@ -609,7 +612,7 @@ Object:
 	}
 
 	configLoaderDefaultTag, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -620,7 +623,7 @@ Object:
 
 	configLoaderNewTag, err := configuro.NewConfig(
 		configuro.Tag("newtag", "validate"),
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -683,7 +686,7 @@ nested:
 
 	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, true),
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -704,7 +707,56 @@ nested:
 		t.Fatal("Validation with Tags was bypassed.")
 	} else {
 		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrFieldTagValidation)
+			_, ok := err.(*configuro.ErrValidationTag)
+			if !ok {
+				t.Fatal("Validation with Tags Returned Wrong Error Type.")
+			}
+		}
+	}
+}
+
+func TestValidateByTagMultiErr(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "TestValidateByTag*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+    key:
+        a: A
+        b: A
+    `)
+
+	configLoader, err := configuro.NewConfig(
+		configuro.Validate(true, true, true),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
+		configuro.LoadDotEnvFile(false, ""),
+		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
+		configuro.OverloadConfigPathWithEnv(false, ""),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	example := &Example{}
+	err = configLoader.Load(example)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = configLoader.Validate(example)
+	Errs := multierr.Errors(err)
+	if Errs == nil {
+		t.Fatal("Validation with Tags was bypassed.")
+	} else {
+		for _, err := range Errs {
+			_, ok := err.(*configuro.ErrValidationTag)
 			if !ok {
 				t.Fatal("Validation with Tags Returned Wrong Error Type.")
 			}
@@ -733,7 +785,7 @@ nested:
 
 	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, false),
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -754,7 +806,7 @@ nested:
 		t.Fatal("Validation using validator interface was bypassed.")
 	} else {
 		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrValidate)
+			_, ok := err.(*configuro.ErrValidationFunc)
 			if !ok {
 				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
 			}
@@ -786,7 +838,7 @@ nested:
 
 	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, false),
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -807,7 +859,7 @@ nested:
 		t.Fatal("Validation using validator interface was bypassed.")
 	} else {
 		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrValidate)
+			_, ok := err.(*configuro.ErrValidationFunc)
 			if !ok {
 				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
 			}
@@ -838,7 +890,7 @@ nested:
 
 	configLoader, err := configuro.NewConfig(
 		configuro.Validate(true, true, false),
-		configuro.LoadFromEnvironmentVariables(false, ""),
+		configuro.LoadFromEnvironmentVariables(false, "X"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -859,7 +911,7 @@ nested:
 		t.Fatal("Validation using validator interface was bypassed.")
 	} else {
 		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrValidate)
+			_, ok := err.(*configuro.ErrValidationFunc)
 			if !ok {
 				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
 			}

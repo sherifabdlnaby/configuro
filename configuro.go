@@ -39,15 +39,20 @@ type Config struct {
 
 //NewConfig Create config Loader/Validator according to options.
 func NewConfig(opts ...ConfigOptions) (*Config, error) {
-	configWithDefaults := defaultConfig()
+	var err error
 
+	configWithDefaults := defaultConfig()
 	config := configWithDefaults
 
 	// Loop through each option
 	for _, opt := range opts {
 		// Call the option giving the instantiated
 		// *House as the argument
-		opt(config)
+		err = opt(config)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	// Sanitize
@@ -57,7 +62,7 @@ func NewConfig(opts ...ConfigOptions) (*Config, error) {
 		}
 	}
 
-	err := config.initialize()
+	err = config.initialize()
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +77,7 @@ func defaultConfig() *Config {
 		envLoad:                true,
 		envDotFileLoad:         true,
 		envDotFilePath:         "./.env",
-		envPrefix:              "",
+		envPrefix:              "CONFIG",
 		configFileLoad:         true,
 		configFileName:         "config",
 		configFileDir:          ".",
@@ -91,16 +96,12 @@ func (c *Config) initialize() error {
 	c.viper = viper.New()
 
 	if c.envLoad {
-		if c.envPrefix != "" {
-			envPrefix := c.envPrefix
-			c.viper.SetEnvPrefix(envPrefix)
 
-			// Viper add the `prefix` + '_' to the Key *before* passing it to Key Replacer,causing the replacer to replace the '_' with '__' when it shouldn't.
-			// by adding the Prefix to the replacer twice, this will let the replacer escapes the prefix as it scans through the string.
-			c.viper.SetEnvKeyReplacer(strings.NewReplacer(envPrefix+"_", envPrefix+"_", "_", "__", ".", "_", "-", "__"))
-		} else {
-			c.viper.SetEnvKeyReplacer(strings.NewReplacer("_", "__", ".", "_", "-", "__"))
-		}
+		c.viper.SetEnvPrefix(c.envPrefix)
+
+		// Viper add the `prefix` + '_' to the Key *before* passing it to Key Replacer,causing the replacer to replace the '_' with '__' when it shouldn't.
+		// by adding the Prefix to the replacer twice, this will let the replacer escapes the prefix as it scans through the string.
+		c.viper.SetEnvKeyReplacer(strings.NewReplacer(c.envPrefix+"_", c.envPrefix+"_", "_", "__", ".", "_"))
 
 		c.viper.AutomaticEnv()
 
@@ -164,7 +165,7 @@ func (c *Config) initialize() error {
 // ---------------------------------------------------------------------------------------------------------------------
 
 //ConfigOptions Modify Config Options Accordingly
-type ConfigOptions func(*Config)
+type ConfigOptions func(*Config) error
 
 //LoadFromEnvironmentVariables Load Configuration from Environment Variables if they're set.
 // 	- Prefix Require Environment Variables to prefixed with the set prefix (All CAPS)
@@ -174,58 +175,68 @@ type ConfigOptions func(*Config)
 //		2. json encoded array in a string.
 //	- Maps and objects can be declared in environment using a json encoded object in a string.
 func LoadFromEnvironmentVariables(Enabled bool, EnvPrefix string) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.envLoad = Enabled
+		if EnvPrefix == "" {
+			return fmt.Errorf("env prefix must be declared")
+		}
 		h.envPrefix = strings.ToUpper(EnvPrefix)
+		return nil
 	}
 }
 
 //Tag Change default tag.
 func Tag(structTag, validateTag string) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.tag = structTag
 		h.validateTag = validateTag
+		return nil
 	}
 }
 
 //LoadDotEnvFile Allow loading .env file (notice that this is application global not to this config instance only)
 func LoadDotEnvFile(Enabled bool, envDotFilePath string) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.envDotFileLoad = Enabled
 		h.envDotFilePath = envDotFilePath
+		return nil
 	}
 }
 
 //ExpandEnvironmentVariables Expand config values with ${ENVVAR} with the value of ENVVAR in environment variables.
 // You can set default if ENVVAR is not set using the following ${ENVVAR|defaultValue}
 func ExpandEnvironmentVariables(Enabled bool) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.configEnvExpand = Enabled
+		return nil
 	}
 }
 
 //Validate Control Validate function behavior.
 func Validate(validateStopOnFirstErr, validateRecursive, validateUsingTags bool) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.validateStopOnFirstErr = validateStopOnFirstErr
 		h.validateRecursive = validateRecursive
 		h.validateUsingTags = validateUsingTags
+		return nil
 	}
 }
 
 //LoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
 func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.configFileLoad = Enabled
 		h.configFileName = fileName
 		h.configFileDir = fileDirPath + "/"
+		return nil
 	}
 }
 
 //OverloadConfigPathWithEnv Allow to override Config Dir Path with an Env Variable
 func OverloadConfigPathWithEnv(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
-	return func(h *Config) {
+	return func(h *Config) error {
 		h.configDirEnv = overrideDirWithEnv
 		h.configDirEnvName = configDirEnvName
+		return nil
 	}
 }
