@@ -99,7 +99,6 @@ func TestEnvVarsEscaping(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
 				example.Nested.Key.B != test.expected.Nested.Key.B ||
 				example.Nested.Key_A.A != test.expected.Nested.Key_A.A ||
@@ -113,15 +112,8 @@ func TestEnvVarsEscaping(t *testing.T) {
 }
 
 func TestLoadFromEnvVarsOnly(t *testing.T) {
-	// Set osEnvVars
-	_ = os.Setenv("PREFIX_NESTED_KEY_A", "X")
-	_ = os.Setenv("PREFIX_NESTED_KEY_B", "Y")
-	_ = os.Setenv("CONFIG_NESTED_KEY_A", "A")
-	_ = os.Setenv("CONFIG_NESTED_KEY_B", "B")
-	_ = os.Setenv("CONFIG_NESTED_KEY_EMPTY", "")
 
-	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, "CONFIG"),
+	envOnlyWithDefaultPrefix, err := configuro.NewConfig(
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(false, "", ""),
 		configuro.OverloadConfigPathWithEnv(false, ""),
@@ -140,12 +132,15 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
-		{name: "withoutPrefix", config: envOnlyWithoutPrefix, expected: Example{Nested{Key: Key{
+	// Set osEnvVars
+	_ = os.Setenv("PREFIX_NESTED_KEY_A", "X")
+	_ = os.Setenv("PREFIX_NESTED_KEY_B", "Y")
+	_ = os.Setenv("CONFIG_NESTED_KEY_A", "A")
+	_ = os.Setenv("CONFIG_NESTED_KEY_B", "B")
+	_ = os.Setenv("CONFIG_NESTED_KEY_EMPTY", "")
+
+	tests := []test{
+		{name: "withoutPrefix", config: envOnlyWithDefaultPrefix, expected: Example{Nested{Key: Key{
 			A:     "A",
 			B:     "B",
 			EMPTY: "",
@@ -163,7 +158,6 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-
 			if example.Nested.Key.A != test.expected.Nested.Key.A ||
 				example.Nested.Key.B != test.expected.Nested.Key.B ||
 				example.Nested.Key.EMPTY != test.expected.Nested.Key.EMPTY {
@@ -174,6 +168,9 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 }
 
 func TestLoadDotEnv(t *testing.T) {
+
+	// Clear Env that may be set up by previous tests. So that .env values are not overridden
+	os.Clearenv()
 
 	dotEnvFile, err := ioutil.TempFile("", "*.env")
 	if err != nil {
@@ -186,8 +183,8 @@ func TestLoadDotEnv(t *testing.T) {
 
 	// Write Config to File
 	dotEnvFile.WriteString(`
-PREFIX_NESTED_KEY_A: X
-PREFIX_NESTED_KEY_B: Y
+PREFIX_NESTED_KEY_A: XXX
+PREFIX_NESTED_KEY_B: YYY
 #PREFIX_NESTED_KEY_B: XYZ
 PREFIX_NESTED_EMPTY:
 #PREFIX_NESTED_EMPTY: FD
@@ -195,16 +192,6 @@ CONFIG_NESTED_KEY_A: A
 CONFIG_NESTED_KEY_B: B
 CONFIG_NESTED_KEY_EMPTY:
     `)
-
-	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, "CONFIG"),
-		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
-		configuro.LoadFromConfigFile(false, "", ""),
-		configuro.OverloadConfigPathWithEnv(false, ""),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	envOnlyWithPrefix, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
@@ -216,19 +203,10 @@ CONFIG_NESTED_KEY_EMPTY:
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
-		{name: "withoutPrefix", config: envOnlyWithoutPrefix, expected: Example{Nested{Key: Key{
-			A:     "A",
-			B:     "B",
-			EMPTY: "",
-		}}}},
+	tests := []test{
 		{name: "withPrefix", config: envOnlyWithPrefix, expected: Example{Nested{Key: Key{
-			A:     "X",
-			B:     "Y",
+			A:     "XXX",
+			B:     "YYY",
 			EMPTY: "",
 		}}}},
 	}
@@ -260,11 +238,7 @@ func TestLoadFromFileThatDoesntExist(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
+	tests := []test{
 		{name: "LoadFromFileThatDoesntExist", config: configLoader, expected: Example{}},
 	}
 	for _, test := range tests {
@@ -320,11 +294,7 @@ nested:
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
+	tests := []test{
 		{name: "LoadFromFile", config: configLoader, expected: Example{
 			Nested: Nested{
 				Key: Key{
@@ -362,7 +332,11 @@ nested:
 	}
 }
 
+//TODO Too long, try make it better.
 func TestOverloadConfigDirWithEnv(t *testing.T) {
+
+	os.Clearenv()
+
 	err := os.MkdirAll(os.TempDir()+"/conf/", 0777)
 	if err != nil {
 		t.Fatal(err)
@@ -423,35 +397,30 @@ nested:
         b: NN
     `)
 
-	_ = os.Setenv("CONFIG_CONFIG_DIR", filepath.Dir(configFileOverloaded1.Name()))
-	_ = os.Setenv("PREFIX_CONFIG_DIR", filepath.Dir(configFileOverloaded2.Name()))
+	_ = os.Setenv("CONFIG_DIR", filepath.Dir(configFileOverloaded1.Name()))
+	_ = os.Setenv("APPNAME_CONFIG_DIR", filepath.Dir(configFileOverloaded2.Name()))
 
-	configLoaderWithoutPrefix, err := configuro.NewConfig(
+	configLoaderEnvDefault, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, "CONFIG"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
-		configuro.OverloadConfigPathWithEnv(true, "CONFIG_DIR"),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	configLoaderWithPrefix, err := configuro.NewConfig(
+	configLoaderWithEnvDir, err := configuro.NewConfig(
 		configuro.LoadFromEnvironmentVariables(false, "PREFIX"),
 		configuro.LoadDotEnvFile(false, ""),
 		configuro.LoadFromConfigFile(true, strings.TrimSuffix(filepath.Base(configFileYaml.Name()), filepath.Ext(filepath.Base(configFileYaml.Name()))), filepath.Dir(configFileYaml.Name())),
-		configuro.OverloadConfigPathWithEnv(true, "CONFIG_DIR"),
+		configuro.OverloadConfigPathWithEnv(true, "APPNAME_CONFIG_DIR"),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
-		{name: "WithoutPrefix", config: configLoaderWithoutPrefix, expected: Example{
+	tests := []test{
+		{name: "configLoaderEnvDirDefault", config: configLoaderEnvDefault, expected: Example{
 			Nested: Nested{
 				Key: Key{
 					A: "XX",
@@ -459,7 +428,7 @@ nested:
 				},
 			},
 		}},
-		{name: "WithPrefix", config: configLoaderWithPrefix, expected: Example{
+		{name: "configLoaderWithEnvDir", config: configLoaderWithEnvDir, expected: Example{
 			Nested: Nested{
 				Key: Key{
 					A: "MM",
@@ -531,11 +500,7 @@ nested:
 		t.Fatal(err)
 	}
 
-	tests := []struct {
-		name     string
-		config   *configuro.Config
-		expected Example
-	}{
+	tests := []test{
 		{name: "withoutPrefix", config: envOnlyWithoutPrefix, expected: Example{
 			Nested: Nested{
 				Key: Key{

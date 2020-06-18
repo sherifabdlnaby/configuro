@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 )
@@ -22,6 +23,14 @@ func (c *Config) Load(configStruct interface{}) error {
 			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 				return fmt.Errorf("error reading config data: %v", err)
 			}
+		}
+	}
+
+	// load .env vars
+	if _, err := os.Stat(c.envDotFilePath); err == nil || !os.IsNotExist(err) {
+		err := godotenv.Load(c.envDotFilePath)
+		if err != nil {
+			return fmt.Errorf("error loading .env envvars from \"%s\": %s", c.envDotFilePath, err.Error())
 		}
 	}
 

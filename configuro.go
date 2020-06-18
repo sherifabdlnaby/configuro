@@ -8,7 +8,6 @@ import (
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	ens "github.com/go-playground/validator/translations/en"
-	"github.com/joho/godotenv"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"gopkg.in/go-playground/validator.v9"
@@ -55,13 +54,6 @@ func NewConfig(opts ...ConfigOptions) (*Config, error) {
 
 	}
 
-	// Sanitize
-	if config.configDirEnv {
-		if config.configDirEnvName != "" && config.envPrefix != "" {
-			config.configDirEnvName = config.envPrefix + "_" + strings.ToUpper(config.configDirEnvName)
-		}
-	}
-
 	err = config.initialize()
 	if err != nil {
 		return nil, err
@@ -105,13 +97,6 @@ func (c *Config) initialize() error {
 
 		c.viper.AutomaticEnv()
 
-		// load .env vars
-		if _, err := os.Stat(c.envDotFilePath); err == nil || !os.IsNotExist(err) {
-			err := godotenv.Load(c.envDotFilePath)
-			if err != nil {
-				return fmt.Errorf("error loading .env envvars from \"%s\": %s", c.envDotFilePath, err.Error())
-			}
-		}
 	}
 
 	if c.configFileLoad {
@@ -122,6 +107,7 @@ func (c *Config) initialize() error {
 		configFileDir := c.configFileDir
 
 		// Override with Nested ?
+		//TODO make this after dot env.
 		if c.configDirEnv {
 			configDirEnvValue, isSet := os.LookupEnv(c.configDirEnvName)
 			if isSet {
@@ -236,7 +222,7 @@ func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string) Confi
 func OverloadConfigPathWithEnv(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
 	return func(h *Config) error {
 		h.configDirEnv = overrideDirWithEnv
-		h.configDirEnvName = configDirEnvName
+		h.configDirEnvName = strings.ToUpper(configDirEnvName)
 		return nil
 	}
 }
