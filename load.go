@@ -17,15 +17,6 @@ import (
 func (c *Config) Load(configStruct interface{}) error {
 	var err error
 
-	if c.configFileLoad {
-		err := c.viper.ReadInConfig()
-		if err != nil {
-			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-				return fmt.Errorf("error reading config data: %v", err)
-			}
-		}
-	}
-
 	// load .env vars
 	if _, err := os.Stat(c.envDotFilePath); err == nil || !os.IsNotExist(err) {
 		err := godotenv.Load(c.envDotFilePath)
@@ -35,14 +26,18 @@ func (c *Config) Load(configStruct interface{}) error {
 	}
 
 	// Bind Env Vars
-	envKVRegex := regexp.MustCompile("^" + c.envPrefix + "_" + "(.*)=.*$")
-	Envvars := os.Environ()
-	for _, env := range Envvars {
-		match := envKVRegex.FindSubmatch([]byte(env))
-		if match != nil {
-			matchUnescaped := strings.NewReplacer("__", "_", "_", ".")
-			matchUnS := matchUnescaped.Replace(string(match[1]))
-			c.viper.BindEnv(matchUnS)
+	c.bindAllEnvsWithPrefix()
+
+	if c.configFileLoad {
+		err := c.viper.ReadInConfig()
+		if err != nil {
+			if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+				return fmt.Errorf("error reading config data: %v", err)
+			} else {
+				if c.configFileErrIfNotFound {
+					return fmt.Errorf("error config file not found. err: %v", err)
+				}
+			}
 		}
 	}
 
@@ -56,30 +51,15 @@ func (c *Config) Load(configStruct interface{}) error {
 	return nil
 }
 
-func (c *Config) bindEnvs(iface interface{}, parts ...string) {
-	ifv := reflect.ValueOf(iface)
-	ift := reflect.TypeOf(iface)
-	if ift.Kind() == reflect.Ptr {
-		ift = ift.Elem()
-		ifv = reflect.Indirect(ifv)
-	}
-	for i := 0; i < ift.NumField(); i++ {
-		fieldv := ifv.Field(i)
-		if !fieldv.CanInterface() {
-			return
-		}
-		t := ift.Field(i)
-		name := strings.ToLower(t.Name)
-		tag, ok := t.Tag.Lookup(c.tag)
-		if ok {
-			name = tag
-		}
-		path := append(parts, name)
-		switch fieldv.Kind() {
-		case reflect.Struct:
-			c.bindEnvs(fieldv.Interface(), path...)
-		default:
-			_ = c.viper.BindEnv(strings.Join(path, "."))
+func (c *Config) bindAllEnvsWithPrefix() {
+	envKVRegex := regexp.MustCompile("^" + c.envPrefix + "_" + "(.*)=.*$")
+	Envvars := os.Environ()
+	for _, env := range Envvars {
+		match := envKVRegex.FindSubmatch([]byte(env))
+		if match != nil {
+			matchUnescaper := strings.NewReplacer("__", "_", "_", ".")
+			matchUnescaped := matchUnescaper.Replace(string(match[1]))
+			c.viper.BindEnv(matchUnescaped)
 		}
 	}
 }
@@ -125,12 +105,12 @@ func stringJSONArrayToSlice() func(f reflect.Kind, t reflect.Kind, data interfac
 	}
 }
 
-func stringJSONObjToMapOrStruct() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+func stringJSONObjToMap() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
 	return func(
 		f reflect.Kind,
 		t reflect.Kind,
 		data interface{}) (interface{}, error) {
-		if f != reflect.String || (t != reflect.Map && t != reflect.Struct) {
+		if f != reflect.String || t != reflect.Map {
 			return data, nil
 		}
 
@@ -140,20 +120,37 @@ func stringJSONObjToMapOrStruct() func(f reflect.Kind, t reflect.Kind, data inte
 		}
 
 		var ret interface{}
-		if t == reflect.Map {
-			jsonMap := make(map[string]interface{})
-			err := json.Unmarshal([]byte(raw), &jsonMap)
-			if err != nil {
-				return raw, fmt.Errorf("couldn't map string-ifed Json to Map: %s", err.Error())
-			}
-			ret = jsonMap
-		} else if t == reflect.Struct {
-			err := json.Unmarshal([]byte(raw), &data)
-			if err != nil {
-				return raw, fmt.Errorf("couldn't map string-ifed Json to Object: %s", err.Error())
-			}
-			ret = data
+		jsonMap := make(map[string]interface{})
+		err := json.Unmarshal([]byte(raw), &jsonMap)
+		if err != nil {
+			return raw, fmt.Errorf("couldn't map string-ifed Json to Map: %s", err.Error())
 		}
+		ret = jsonMap
+
+		return ret, nil
+	}
+}
+
+func stringJSONObjToStruct() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
+	return func(
+		f reflect.Kind,
+		t reflect.Kind,
+		data interface{}) (interface{}, error) {
+		if f != reflect.String || t != reflect.Struct {
+			return data, nil
+		}
+
+		raw := data.(string)
+		if raw == "" {
+			return []string{}, nil
+		}
+
+		var ret interface{}
+		err := json.Unmarshal([]byte(raw), &data)
+		if err != nil {
+			return raw, fmt.Errorf("couldn't map string-ifed Json to Object: %s", err.Error())
+		}
+		ret = data
 		return ret, nil
 	}
 }

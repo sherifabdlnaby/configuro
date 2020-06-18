@@ -35,7 +35,7 @@ type Key struct {
 	A     string
 	B     string
 	C     string `validate:"required"`
-	D     string
+	D     string `validate:"required"`
 	E     string
 	EMPTY string
 }
@@ -647,6 +647,7 @@ nested:
     key:
         a: A
         b: A
+        c: X
     `)
 
 	configLoader, err := configuro.NewConfig(
@@ -667,16 +668,15 @@ nested:
 	}
 
 	err = configLoader.Validate(example)
-	Errs := multierr.Errors(err)
-	if Errs == nil {
+	if err == nil {
 		t.Fatal("Validation with Tags was bypassed.")
 	} else {
-		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrValidationTag)
-			if !ok {
-				t.Fatal("Validation with Tags Returned Wrong Error Type.")
-			}
+
+		_, ok := err.(*configuro.ErrValidationTag)
+		if !ok {
+			t.Fatal("Validation with Tags Returned Wrong Error Type.")
 		}
+
 	}
 }
 
@@ -716,15 +716,19 @@ nested:
 	}
 
 	err = configLoader.Validate(example)
-	Errs := multierr.Errors(err)
-	if Errs == nil {
+	if err == nil {
 		t.Fatal("Validation with Tags was bypassed.")
-	} else {
-		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrValidationTag)
-			if !ok {
-				t.Fatal("Validation with Tags Returned Wrong Error Type.")
-			}
+	}
+	_, ok := err.(configuro.ErrValidationErrors)
+	if !ok {
+		t.Fatal("Validation with Tags didn't return ErrValidationErrors when multi error happen.")
+
+	}
+	Errs := multierr.Errors(err)
+	for _, err := range Errs {
+		_, ok := err.(*configuro.ErrValidationTag)
+		if !ok {
+			t.Fatal("Validation with Tags Returned Wrong Error Type.")
 		}
 	}
 }

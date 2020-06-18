@@ -15,25 +15,26 @@ import (
 
 //Config Loads and Validate Arbitrary structs based on options (set at constructing)
 type Config struct {
-	envLoad                bool
-	envPrefix              string
-	envDotFileLoad         bool
-	envDotFilePath         string
-	configFileLoad         bool
-	configFileName         string
-	configFileDir          string
-	configDirEnv           bool
-	configDirEnvName       string
-	configEnvExpand        bool
-	validateStopOnFirstErr bool
-	validateRecursive      bool
-	validateUsingTags      bool
-	validateTag            string
-	tag                    string
-	viper                  *viper.Viper
-	validator              *validator.Validate
-	validatorTrans         ut.Translator
-	decodeHook             viper.DecoderConfigOption
+	envLoad                 bool
+	envPrefix               string
+	envDotFileLoad          bool
+	envDotFilePath          string
+	configFileLoad          bool
+	configFileErrIfNotFound bool
+	configFileName          string
+	configFileDir           string
+	configDirEnv            bool
+	configDirEnvName        string
+	configEnvExpand         bool
+	validateStopOnFirstErr  bool
+	validateRecursive       bool
+	validateUsingTags       bool
+	validateTag             string
+	tag                     string
+	viper                   *viper.Viper
+	validator               *validator.Validate
+	validatorTrans          ut.Translator
+	decodeHook              viper.DecoderConfigOption
 }
 
 //NewConfig Create config Loader/Validator according to options.
@@ -88,61 +89,19 @@ func (c *Config) initialize() error {
 	c.viper = viper.New()
 
 	if c.envLoad {
-
-		c.viper.SetEnvPrefix(c.envPrefix)
-
-		// Viper add the `prefix` + '_' to the Key *before* passing it to Key Replacer,causing the replacer to replace the '_' with '__' when it shouldn't.
-		// by adding the Prefix to the replacer twice, this will let the replacer escapes the prefix as it scans through the string.
-		c.viper.SetEnvKeyReplacer(strings.NewReplacer(c.envPrefix+"_", c.envPrefix+"_", "_", "__", ".", "_"))
-
-		c.viper.AutomaticEnv()
-
+		c.enableEnvLoad()
 	}
 
 	if c.configFileLoad {
-		// Config Name
-		c.viper.SetConfigName(c.configFileName)
-
-		// Config Dir Path
-		configFileDir := c.configFileDir
-
-		// Override with Nested ?
-		//TODO make this after dot env.
-		if c.configDirEnv {
-			configDirEnvValue, isSet := os.LookupEnv(c.configDirEnvName)
-			if isSet {
-				configFileDir = configDirEnvValue
-			}
-		}
-
-		c.viper.AddConfigPath(configFileDir + "/")
-		c.viper.ConfigFileUsed()
+		c.enableConfigFileLoad()
 	}
 
 	// decoder config
-	DefaultDecodeHookFuncs := []mapstructure.DecodeHookFunc{
-		stringJSONArrayToSlice(),
-		stringJSONObjToMapOrStruct(),
-		mapstructure.StringToTimeDurationHookFunc(),
-		mapstructure.StringToIPHookFunc(),
-	}
-
-	if c.configEnvExpand {
-		DefaultDecodeHookFuncs = append([]mapstructure.DecodeHookFunc{expandEnvVariablesWithDefaults()}, DefaultDecodeHookFuncs...)
-	}
-
-	c.decodeHook = viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
-		DefaultDecodeHookFuncs...,
-	))
+	c.addDecoderConfig()
 
 	// Tag validator
 	if c.validateUsingTags {
-		c.validator = validator.New()
-		c.validator.SetTagName(c.validateTag)
-		// Get English Errors
-		uni := ut.New(en.New(), en.New())
-		c.validatorTrans, _ = uni.GetTranslator("en")
-		_ = ens.RegisterDefaultTranslations(c.validator, c.validatorTrans)
+		c.enableValidateUsingTag()
 	}
 
 	return nil
@@ -225,4 +184,54 @@ func OverloadConfigPathWithEnv(overrideDirWithEnv bool, configDirEnvName string)
 		h.configDirEnvName = strings.ToUpper(configDirEnvName)
 		return nil
 	}
+}
+
+func (c *Config) enableValidateUsingTag() {
+	c.validator = validator.New()
+	c.validator.SetTagName(c.validateTag)
+	// Get English Errors
+	uni := ut.New(en.New(), en.New())
+	c.validatorTrans, _ = uni.GetTranslator("en")
+	_ = ens.RegisterDefaultTranslations(c.validator, c.validatorTrans)
+}
+
+func (c *Config) addDecoderConfig() {
+	DefaultDecodeHookFuncs := []mapstructure.DecodeHookFunc{
+		stringJSONArrayToSlice(),
+		stringJSONObjToMap(),
+		stringJSONObjToStruct(),
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToIPHookFunc(),
+	}
+	if c.configEnvExpand {
+		DefaultDecodeHookFuncs = append([]mapstructure.DecodeHookFunc{expandEnvVariablesWithDefaults()}, DefaultDecodeHookFuncs...)
+	}
+	c.decodeHook = viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		DefaultDecodeHookFuncs...,
+	))
+}
+
+func (c *Config) enableConfigFileLoad() {
+	// Config Name
+	c.viper.SetConfigName(c.configFileName)
+	// Config Dir Path
+	configFileDir := c.configFileDir
+	// Override with Nested ?
+	//TODO make this after dot env.
+	if c.configDirEnv {
+		configDirEnvValue, isSet := os.LookupEnv(c.configDirEnvName)
+		if isSet {
+			configFileDir = configDirEnvValue
+		}
+	}
+	c.viper.AddConfigPath(configFileDir + "/")
+	c.viper.ConfigFileUsed()
+}
+
+func (c *Config) enableEnvLoad() {
+	c.viper.SetEnvPrefix(c.envPrefix)
+	// Viper add the `prefix` + '_' to the Key *before* passing it to Key Replacer,causing the replacer to replace the '_' with '__' when it shouldn't.
+	// by adding the Prefix to the replacer twice, this will let the replacer escapes the prefix as it scans through the string.
+	c.viper.SetEnvKeyReplacer(strings.NewReplacer(c.envPrefix+"_", c.envPrefix+"_", "_", "__", ".", "_"))
+	c.viper.AutomaticEnv()
 }
