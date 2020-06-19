@@ -28,7 +28,7 @@ func (c *Config) Validate(configStruct interface{}) error {
 
 	// cast errs to ErrValidationErrs if it is multierr (So we use the package error instead of 3rd party error type)
 	if len(multierr.Errors(errs)) > 1 {
-		return ErrValidationErrors(errs)
+		return ErrValidationErrors{error: errs}
 	}
 	return errs
 }

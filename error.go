@@ -3,10 +3,13 @@ package configuro
 import (
 	"fmt"
 
+	"go.uber.org/multierr"
 	"gopkg.in/go-playground/validator.v9"
 )
 
-type ErrValidationErrors error
+type ErrValidationErrors struct {
+	error
+}
 
 //ErrValidationTag Error if validation failed by a tag
 type ErrValidationTag struct {
@@ -47,6 +50,10 @@ func (e *ErrValidationFunc) Error() string {
 	return fmt.Sprintf(`%s`, e.err)
 }
 
+func (e *ErrValidationErrors) Errors() []error {
+	return multierr.Errors(e.error)
+}
+
 //Unwrap to support errors IS|AS
 func (e *ErrValidationTag) Unwrap() error {
 	return e.err
@@ -55,4 +62,9 @@ func (e *ErrValidationTag) Unwrap() error {
 //Unwrap to support errors IS|AS
 func (e *ErrValidationFunc) Unwrap() error {
 	return e.err
+}
+
+//Unwrap to support errors IS|AS
+func (e *ErrValidationErrors) Unwrap() error {
+	return e.error
 }

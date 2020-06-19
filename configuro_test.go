@@ -718,12 +718,13 @@ nested:
 	if err == nil {
 		t.Fatal("Validation with Tags was bypassed.")
 	}
-	_, ok := err.(configuro.ErrValidationErrors)
+	errsType, ok := err.(configuro.ErrValidationErrors)
 	if !ok {
 		t.Fatal("Validation with Tags didn't return ErrValidationErrors when multi error happen.")
 
 	}
-	Errs := multierr.Errors(err)
+
+	Errs := errsType.Errors()
 	for _, err := range Errs {
 		_, ok := err.(*configuro.ErrValidationTag)
 		if !ok {
