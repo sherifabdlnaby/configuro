@@ -3,11 +3,13 @@ package configuro
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	ens "github.com/go-playground/validator/translations/en"
+	"github.com/joho/godotenv"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"gopkg.in/go-playground/validator.v9"
@@ -21,10 +23,9 @@ type Config struct {
 	envDotFilePath          string
 	configFileLoad          bool
 	configFileErrIfNotFound bool
-	configFileName          string
-	configFileDir           string
-	configDirEnv            bool
-	configDirEnvName        string
+	configFilepath          string
+	configFilepathEnv       bool
+	configFilepathEnvName   string
 	configEnvExpand         bool
 	validateStopOnFirstErr  bool
 	validateRecursive       bool
@@ -41,11 +42,14 @@ type Config struct {
 func NewConfig(opts ...ConfigOptions) (*Config, error) {
 	var err error
 
-	configWithDefaults := defaultConfig()
-	config := configWithDefaults
+	config := &Config{}
+
+	options := DefaultOptions()
+
+	options = append(options, opts...)
 
 	// Loop through each option
-	for _, opt := range opts {
+	for _, opt := range options {
 		// Call the option giving the instantiated
 		// *House as the argument
 		err = opt(config)
@@ -63,23 +67,15 @@ func NewConfig(opts ...ConfigOptions) (*Config, error) {
 	return config, nil
 }
 
-func defaultConfig() *Config {
-	return &Config{
-		tag:                    "config",
-		validateTag:            "validate",
-		envLoad:                true,
-		envDotFileLoad:         true,
-		envDotFilePath:         "./.env",
-		envPrefix:              "CONFIG",
-		configFileLoad:         true,
-		configFileName:         "config",
-		configFileDir:          ".",
-		configDirEnv:           true,
-		configDirEnvName:       "CONFIG_DIR",
-		configEnvExpand:        true,
-		validateStopOnFirstErr: false,
-		validateRecursive:      true,
-		validateUsingTags:      true,
+func DefaultOptions() []ConfigOptions {
+	return []ConfigOptions{
+		LoadFromEnvironmentVariables(true, "CONFIG"),
+		LoadFromConfigFile(true, "./config.yml"),
+		OverloadConfigPathEnvName(true, "CONFIG_DIR"),
+		LoadDotEnvFile(true, "./env"),
+		ExpandEnvironmentVariables(true),
+		Validate(true, true, true),
+		Tag("config", "validate"),
 	}
 }
 
@@ -88,12 +84,25 @@ func (c *Config) initialize() error {
 	// Init Viper
 	c.viper = viper.New()
 
+	if c.envDotFileLoad {
+		// load .env vars
+		if _, err := os.Stat(c.envDotFilePath); err == nil || !os.IsNotExist(err) {
+			err := godotenv.Load(c.envDotFilePath)
+			if err != nil {
+				return fmt.Errorf("error loading .env envvars from \"%s\": %s", c.envDotFilePath, err.Error())
+			}
+		}
+	}
+
 	if c.envLoad {
 		c.enableEnvLoad()
 	}
 
 	if c.configFileLoad {
-		c.enableConfigFileLoad()
+		err := c.enableConfigFileLoad()
+		if err != nil {
+			return err
+		}
 	}
 
 	// decoder config
@@ -168,20 +177,58 @@ func Validate(validateStopOnFirstErr, validateRecursive, validateUsingTags bool)
 }
 
 //LoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
-func LoadFromConfigFile(Enabled bool, fileName string, fileDirPath string) ConfigOptions {
+func LoadFromConfigFile(Enabled bool, Filepath string) ConfigOptions {
 	return func(h *Config) error {
 		h.configFileLoad = Enabled
-		h.configFileName = fileName
-		h.configFileDir = fileDirPath + "/"
-		return nil
+		if !Enabled {
+			//TODO remove this on Options refactoring
+			return nil
+		}
+		return h.setConfigFilepath(Filepath)
 	}
 }
 
-//OverloadConfigPathWithEnv Allow to override Config Dir Path with an Env Variable
-func OverloadConfigPathWithEnv(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
+var supportedExt = []string{".json", ".toml", ".yaml", ".yml"}
+
+func isSupportedExtension(ext string) bool {
+	found := false
+	for _, supportedExt := range supportedExt {
+		if ext == supportedExt {
+			found = true
+		}
+	}
+	return found
+}
+
+func (c *Config) setConfigFilepath(path string) error {
+
+	// Turn into ABS filepath
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	// Check extension
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return fmt.Errorf("config file has no extension")
+	}
+
+	isSupported := isSupportedExtension(ext)
+
+	if !isSupported {
+		return fmt.Errorf("file with extension %s is not supported", ext)
+	}
+
+	c.configFilepath = path
+	return nil
+}
+
+//OverloadConfigPathEnvName Allow to override Config Dir Path with an Env Variable
+func OverloadConfigPathEnvName(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
 	return func(h *Config) error {
-		h.configDirEnv = overrideDirWithEnv
-		h.configDirEnvName = strings.ToUpper(configDirEnvName)
+		h.configFilepathEnv = overrideDirWithEnv
+		h.configFilepathEnvName = strings.ToUpper(configDirEnvName)
 		return nil
 	}
 }
@@ -211,21 +258,20 @@ func (c *Config) addDecoderConfig() {
 	))
 }
 
-func (c *Config) enableConfigFileLoad() {
-	// Config Name
-	c.viper.SetConfigName(c.configFileName)
-	// Config Dir Path
-	configFileDir := c.configFileDir
-	// Override with Nested ?
-	//TODO make this after dot env.
-	if c.configDirEnv {
-		configDirEnvValue, isSet := os.LookupEnv(c.configDirEnvName)
+func (c *Config) enableConfigFileLoad() error {
+
+	if c.configFilepathEnv {
+		configDirEnvValue, isSet := os.LookupEnv(c.configFilepathEnvName)
 		if isSet {
-			configFileDir = configDirEnvValue
+			err := c.setConfigFilepath(configDirEnvValue)
+			if err != nil {
+				return err
+			}
 		}
 	}
-	c.viper.AddConfigPath(configFileDir + "/")
-	c.viper.ConfigFileUsed()
+
+	c.viper.SetConfigFile(c.configFilepath)
+	return nil
 }
 
 func (c *Config) enableEnvLoad() {
