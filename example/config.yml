@@ -1,0 +1,17 @@
+number: 6800
+number_list: 1,2,3,4             # List can be declared using comma separated lists too.
+word: String set in YAML file
+another_word: String set in YAML file (Should be Overriden by ENV) # Replaced by CONFIG_ANOTHER__WORD in OS Env or .env. *(notice the double __ )
+word_map:
+    key1: value1
+    key2: value2
+database:
+    hosts:
+        - localhost1:2022
+        - localhost2:3200
+        - ${DB_HOST_3}:4200       # DB_HOST_3 declared in OS Environment or .env will be substituted here.
+    username: ${DB_USERNAME|John} # DB_USERNAME too, if not found, "john" is the default value.
+    password: 123456              # Real value will be substituted by CONFIG_DATABASE_PASSWORD value declared at OS or .env
+logger:
+    level: INFO
+    debug: true
