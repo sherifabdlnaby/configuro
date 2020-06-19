@@ -7,12 +7,12 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
-//Validatable Any Type that Implements this interface will have its Validate() function called when validating config.
+//Validatable Any Type that Implements this interface will have its WithValidateByTags() function called when validating config.
 type Validatable interface {
 	Validate() error
 }
 
-//Validate Validate Struct using Tags and Any Fields that Implements the validatable interface.
+//WithValidateByTags WithValidateByTags Struct using Tags and Any Fields that Implements the validatable interface.
 func (c *Config) Validate(configStruct interface{}) error {
 
 	var errs error
@@ -21,7 +21,7 @@ func (c *Config) Validate(configStruct interface{}) error {
 		errs = multierr.Append(c.validateTags(configStruct), errs)
 	}
 
-	err := recursiveValidate(configStruct, c.validateRecursive, c.validateStopOnFirstErr)
+	err := recursiveValidate(configStruct, true, c.validateStopOnFirstErr)
 	if err != nil {
 		errs = multierr.Append(errs, err)
 	}
@@ -68,7 +68,7 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 		val = val.Elem()
 	}
 
-	// Recursively Validate Obj Fields / Elements
+	// Recursively WithValidateByTags Obj Fields / Elements
 	switch val.Kind() {
 	case reflect.Struct:
 		if recursive {
@@ -113,7 +113,7 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 		}
 	}
 
-	// Call Validate on the value it self
+	// Call WithValidateByTags on the value it self
 	if val.CanInterface() {
 		validatable, ok := val.Interface().(Validatable)
 		if ok {

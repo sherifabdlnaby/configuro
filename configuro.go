@@ -15,7 +15,7 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
-//Config Loads and Validate Arbitrary structs based on options (set at constructing)
+//Config Loads and WithValidateByTags Arbitrary structs based on options (set at constructing)
 type Config struct {
 	envLoad                 bool
 	envPrefix               string
@@ -69,12 +69,12 @@ func NewConfig(opts ...ConfigOptions) (*Config, error) {
 
 func DefaultOptions() []ConfigOptions {
 	return []ConfigOptions{
-		LoadFromEnvironmentVariables(true, "CONFIG"),
-		LoadFromConfigFile(true, "./config.yml"),
-		OverloadConfigPathEnvName(true, "CONFIG_DIR"),
-		LoadDotEnvFile(true, "./env"),
-		ExpandEnvironmentVariables(true),
-		Validate(true, true, true),
+		WithLoadFromEnvVars("CONFIG"),
+		WithLoadFromConfigFile("./config.yml", false),
+		WithEnvConfigPathOverload("CONFIG_DIR"),
+		WithLoadDotEnv("./env"),
+		WithExpandEnvVars(),
+		WithValidateByTags(true),
 		Tag("config", "validate"),
 	}
 }
@@ -121,20 +121,116 @@ func (c *Config) initialize() error {
 //ConfigOptions Modify Config Options Accordingly
 type ConfigOptions func(*Config) error
 
-//LoadFromEnvironmentVariables Load Configuration from Environment Variables if they're set.
+//WithLoadFromEnvVars Load Configuration from Environment Variables if they're set.
 // 	- Prefix Require Environment Variables to prefixed with the set prefix (All CAPS)
 // 	- For Nested fields replace `.` with `_` and if key itself has any `_` or `-` replace with `__` (e.g `config.host` to be `CONFIG_HOST`)
 //	- Arrays can be declared in environment variables using
 //		1. comma separated list.
 //		2. json encoded array in a string.
 //	- Maps and objects can be declared in environment using a json encoded object in a string.
-func LoadFromEnvironmentVariables(Enabled bool, EnvPrefix string) ConfigOptions {
+func WithLoadFromEnvVars(EnvPrefix string) ConfigOptions {
 	return func(h *Config) error {
-		h.envLoad = Enabled
 		if EnvPrefix == "" {
 			return fmt.Errorf("env prefix must be declared")
 		}
+
+		h.envLoad = true
 		h.envPrefix = strings.ToUpper(EnvPrefix)
+
+		return nil
+	}
+}
+
+func WithoutLoadFromEnvVars() ConfigOptions {
+	return func(h *Config) error {
+		h.envLoad = false
+		h.envPrefix = ""
+		return nil
+	}
+}
+
+//WithLoadDotEnv Allow loading .env file (notice that this is application global not to this config instance only)
+func WithLoadDotEnv(envDotFilePath string) ConfigOptions {
+	return func(h *Config) error {
+		h.envDotFileLoad = true
+		h.envDotFilePath = envDotFilePath
+		return nil
+	}
+}
+
+//WithLoadDotEnv Allow loading .env file (notice that this is application global not to this config instance only)
+func WithoutLoadDotEnv() ConfigOptions {
+	return func(h *Config) error {
+		h.envDotFileLoad = false
+		h.envDotFilePath = ""
+		return nil
+	}
+}
+
+//WithLoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
+func WithLoadFromConfigFile(Filepath string, ErrIfFileNotFound bool) ConfigOptions {
+	return func(h *Config) error {
+		h.configFileLoad = true
+		h.configFileErrIfNotFound = ErrIfFileNotFound
+		return h.setConfigFilepath(Filepath)
+	}
+}
+
+func WithoutLoadFromConfigFile() ConfigOptions {
+	return func(h *Config) error {
+		h.configFileLoad = false
+		h.configFileErrIfNotFound = false
+		h.configFilepath = ""
+		return nil
+	}
+}
+
+//WithEnvConfigPathOverload Allow to override Config Dir Path with an Env Variable
+func WithEnvConfigPathOverload(configFilepathENV string) ConfigOptions {
+	return func(h *Config) error {
+		h.configFilepathEnv = true
+		h.configFilepathEnvName = strings.ToUpper(configFilepathENV)
+		return nil
+	}
+}
+
+//WithEnvConfigPathOverload Allow to override Config Dir Path with an Env Variable
+func WithoutEnvConfigPathOverload() ConfigOptions {
+	return func(h *Config) error {
+		h.configFilepathEnv = false
+		h.configFilepathEnvName = ""
+		return nil
+	}
+}
+
+//WithExpandEnvVars Expand config values with ${ENVVAR} with the value of ENVVAR in environment variables.
+// You can set default if ENVVAR is not set using the following ${ENVVAR|defaultValue}
+func WithExpandEnvVars() ConfigOptions {
+	return func(h *Config) error {
+		h.configEnvExpand = true
+		return nil
+	}
+}
+func WithoutExpandEnvVars() ConfigOptions {
+	return func(h *Config) error {
+		h.configEnvExpand = false
+		return nil
+	}
+}
+
+//WithValidateByTags Control WithValidateByTags function behavior.
+func WithValidateByTags(StopOnFirstErr bool) ConfigOptions {
+	return func(h *Config) error {
+		h.validateStopOnFirstErr = StopOnFirstErr
+		h.validateUsingTags = true
+		return nil
+	}
+}
+
+func WithoutValidateByTags() ConfigOptions {
+	return func(h *Config) error {
+		h.validateStopOnFirstErr = false
+		h.validateUsingTags = false
 		return nil
 	}
 }
@@ -145,46 +241,6 @@ func Tag(structTag, validateTag string) ConfigOptions {
 		h.tag = structTag
 		h.validateTag = validateTag
 		return nil
-	}
-}
-
-//LoadDotEnvFile Allow loading .env file (notice that this is application global not to this config instance only)
-func LoadDotEnvFile(Enabled bool, envDotFilePath string) ConfigOptions {
-	return func(h *Config) error {
-		h.envDotFileLoad = Enabled
-		h.envDotFilePath = envDotFilePath
-		return nil
-	}
-}
-
-//ExpandEnvironmentVariables Expand config values with ${ENVVAR} with the value of ENVVAR in environment variables.
-// You can set default if ENVVAR is not set using the following ${ENVVAR|defaultValue}
-func ExpandEnvironmentVariables(Enabled bool) ConfigOptions {
-	return func(h *Config) error {
-		h.configEnvExpand = Enabled
-		return nil
-	}
-}
-
-//Validate Control Validate function behavior.
-func Validate(validateStopOnFirstErr, validateRecursive, validateUsingTags bool) ConfigOptions {
-	return func(h *Config) error {
-		h.validateStopOnFirstErr = validateStopOnFirstErr
-		h.validateRecursive = validateRecursive
-		h.validateUsingTags = validateUsingTags
-		return nil
-	}
-}
-
-//LoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
-func LoadFromConfigFile(Enabled bool, Filepath string) ConfigOptions {
-	return func(h *Config) error {
-		h.configFileLoad = Enabled
-		if !Enabled {
-			//TODO remove this on Options refactoring
-			return nil
-		}
-		return h.setConfigFilepath(Filepath)
 	}
 }
 
@@ -222,15 +278,6 @@ func (c *Config) setConfigFilepath(path string) error {
 
 	c.configFilepath = path
 	return nil
-}
-
-//OverloadConfigPathEnvName Allow to override Config Dir Path with an Env Variable
-func OverloadConfigPathEnvName(overrideDirWithEnv bool, configDirEnvName string) ConfigOptions {
-	return func(h *Config) error {
-		h.configFilepathEnv = overrideDirWithEnv
-		h.configFilepathEnvName = strings.ToUpper(configDirEnvName)
-		return nil
-	}
 }
 
 func (c *Config) enableValidateUsingTag() {

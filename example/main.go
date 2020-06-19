@@ -36,7 +36,7 @@ func main() {
 
 	// Create Configuro Object
 	Loader, err := configuro.NewConfig(
-		configuro.LoadFromConfigFile(true, "./config.hcl"))
+		configuro.WithLoadFromConfigFile("./config.yml", false))
 	if err != nil {
 		panic(err)
 	}

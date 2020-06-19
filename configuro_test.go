@@ -55,9 +55,9 @@ func (k Key) Validate() error {
 func TestEnvVarsEscaping(t *testing.T) {
 
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, "CONFIG"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(false, ""),
+		configuro.WithLoadFromEnvVars("CONFIG"),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithoutLoadFromConfigFile(),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -113,19 +113,19 @@ func TestEnvVarsEscaping(t *testing.T) {
 func TestLoadFromEnvVarsOnly(t *testing.T) {
 
 	envOnlyWithDefaultPrefix, err := configuro.NewConfig(
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(false, ""),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithoutLoadFromConfigFile(),
+		configuro.WithoutEnvConfigPathOverload(),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	envOnlyWithPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(false, ""),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithLoadFromEnvVars("PREFIX"),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithoutLoadFromConfigFile(),
+		configuro.WithoutEnvConfigPathOverload(),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -193,10 +193,10 @@ CONFIG_NESTED_KEY_EMPTY:
     `)
 
 	envOnlyWithPrefix, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(true, "PREFIX"),
-		configuro.LoadDotEnvFile(true, dotEnvFile.Name()),
-		configuro.LoadFromConfigFile(false, ""),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithLoadFromEnvVars("PREFIX"),
+		configuro.WithLoadDotEnv(dotEnvFile.Name()),
+		configuro.WithoutLoadFromConfigFile(),
+		configuro.WithoutEnvConfigPathOverload(),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -228,10 +228,10 @@ CONFIG_NESTED_KEY_EMPTY:
 
 func TestLoadFromFileThatDoesntExist(t *testing.T) {
 	configLoader, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, "XXX"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, "filethatdoesntexist.yml"),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithLoadFromEnvVars("XXX"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile("filethatdoesntexist.yml", false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -284,10 +284,10 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -400,19 +400,19 @@ nested:
 	_ = os.Setenv("APPNAME_CONFIG_DIR", configFileOverloaded2.Name())
 
 	configLoaderEnvDefault, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, "CONFIG"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
+		configuro.WithoutLoadFromEnvVars(),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	configLoaderWithEnvDir, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, "PREFIX"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(true, "APPNAME_CONFIG_DIR"),
+		configuro.WithoutLoadFromEnvVars(),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload("APPNAME_CONFIG_DIR"),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -489,11 +489,11 @@ nested:
     `)
 
 	envOnlyWithoutPrefix, err := configuro.NewConfig(
-		configuro.ExpandEnvironmentVariables(true),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithExpandEnvVars(),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -576,10 +576,10 @@ Object:
 	}
 
 	configLoaderDefaultTag, err := configuro.NewConfig(
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -587,10 +587,10 @@ Object:
 
 	configLoaderNewTag, err := configuro.NewConfig(
 		configuro.Tag("newtag", "validate"),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -650,11 +650,11 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.Validate(true, true, true),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithValidateByTags(true),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -698,11 +698,11 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.Validate(true, true, true),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithValidateByTags(true),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -752,11 +752,11 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.Validate(true, true, false),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithoutValidateByTags(),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -805,11 +805,11 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.Validate(true, true, false),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithoutValidateByTags(),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -857,11 +857,11 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.Validate(true, true, false),
-		configuro.LoadFromEnvironmentVariables(false, "X"),
-		configuro.LoadDotEnvFile(false, ""),
-		configuro.LoadFromConfigFile(true, configFileYaml.Name()),
-		configuro.OverloadConfigPathEnvName(false, ""),
+		configuro.WithoutValidateByTags(),
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
 	)
 	if err != nil {
 		t.Fatal(err)
