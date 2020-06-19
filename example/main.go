@@ -35,7 +35,8 @@ type Logger struct {
 func main() {
 
 	// Create Configuro Object
-	Loader, err := configuro.NewConfig()
+	Loader, err := configuro.NewConfig(
+		configuro.LoadFromConfigFile(true, "./config.hcl"))
 	if err != nil {
 		panic(err)
 	}
