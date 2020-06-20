@@ -57,10 +57,6 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 
 	var errs error
 
-	if obj == nil {
-		return nil
-	}
-
 	if reflect.ValueOf(obj).Kind() == reflect.Ptr && reflect.ValueOf(obj).IsNil() {
 		return nil
 	}

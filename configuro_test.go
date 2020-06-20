@@ -670,12 +670,12 @@ nested:
 	if err == nil {
 		t.Fatal("Validation with Tags was bypassed.")
 	} else {
-
-		_, ok := err.(*configuro.ErrValidationTag)
+		_ = err.Error()
+		errx, ok := err.(*configuro.ErrValidationTag)
 		if !ok {
 			t.Fatal("Validation with Tags Returned Wrong Error Type.")
 		}
-
+		_ = errx.Unwrap()
 	}
 }
 
@@ -699,6 +699,7 @@ nested:
 
 	configLoader, err := configuro.NewConfig(
 		configuro.WithValidateByTags(),
+		configuro.WithoutValidateByFunc(),
 		configuro.WithLoadFromEnvVars("X"),
 		configuro.WithLoadDotEnv(""),
 		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
@@ -725,12 +726,15 @@ nested:
 	}
 
 	Errs := errsType.Errors()
+
 	for _, err := range Errs {
 		_, ok := err.(*configuro.ErrValidationTag)
 		if !ok {
 			t.Fatal("Validation with Tags Returned Wrong Error Type.")
 		}
 	}
+	_ = errsType.Unwrap()
+	_ = err.Error()
 }
 
 func TestValidateByInterface(t *testing.T) {
@@ -754,6 +758,7 @@ nested:
 
 	configLoader, err := configuro.NewConfig(
 		configuro.WithoutValidateByTags(),
+		configuro.WithValidateByFunc(true, true),
 		configuro.WithLoadFromEnvVars("X"),
 		configuro.WithLoadDotEnv(""),
 		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
@@ -775,12 +780,15 @@ nested:
 		t.Fatal("Validation using validator interface was bypassed.")
 	} else {
 		for _, err := range Errs {
-			_, ok := err.(*configuro.ErrValidationFunc)
+			errx, ok := err.(*configuro.ErrValidationFunc)
 			if !ok {
 				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
 			}
+			_ = errx.Unwrap()
 		}
 	}
+
+	_ = err.Error()
 }
 
 func TestValidateMaps(t *testing.T) {
