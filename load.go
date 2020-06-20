@@ -24,12 +24,13 @@ func (c *Config) Load(configStruct interface{}) error {
 	if c.configFileLoad {
 		err := c.viper.ReadInConfig()
 		if err != nil {
-			if pathErr, ok := err.(*os.PathError); !ok {
+			pathErr, ok := err.(*os.PathError)
+			if !ok {
 				return fmt.Errorf("error reading config data: %v", err)
-			} else {
-				if c.configFileErrIfNotFound && pathErr.Op == "open'" {
-					return fmt.Errorf("error config file not found. err: %v", err)
-				}
+			}
+
+			if c.configFileErrIfNotFound && pathErr.Op == "open'" {
+				return fmt.Errorf("error config file not found. err: %v", err)
 			}
 		}
 	}

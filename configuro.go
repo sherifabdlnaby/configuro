@@ -17,25 +17,26 @@ import (
 
 //Config Loads and WithValidateByTags Arbitrary structs based on options (set at constructing)
 type Config struct {
-	envLoad                 bool
-	envPrefix               string
-	envDotFileLoad          bool
-	envDotFilePath          string
-	configFileLoad          bool
-	configFileErrIfNotFound bool
-	configFilepath          string
-	configFilepathEnv       bool
-	configFilepathEnvName   string
-	configEnvExpand         bool
-	validateStopOnFirstErr  bool
-	validateRecursive       bool
-	validateUsingTags       bool
-	validateTag             string
-	tag                     string
-	viper                   *viper.Viper
-	validator               *validator.Validate
-	validatorTrans          ut.Translator
-	decodeHook              viper.DecoderConfigOption
+	envLoad                    bool
+	envPrefix                  string
+	envDotFileLoad             bool
+	envDotFilePath             string
+	configFileLoad             bool
+	configFileErrIfNotFound    bool
+	configFilepath             string
+	configFilepathEnv          bool
+	configFilepathEnvName      string
+	configEnvExpand            bool
+	validateFuncStopOnFirstErr bool
+	validateRecursive          bool
+	validateUsingTags          bool
+	validateUsingFunc          bool
+	validateTag                string
+	tag                        string
+	viper                      *viper.Viper
+	validator                  *validator.Validate
+	validatorTrans             ut.Translator
+	decodeHook                 viper.DecoderConfigOption
 }
 
 //NewConfig Create config Loader/Validator according to options.
@@ -67,6 +68,7 @@ func NewConfig(opts ...ConfigOptions) (*Config, error) {
 	return config, nil
 }
 
+//DefaultOptions Returns The Default Configuro Options
 func DefaultOptions() []ConfigOptions {
 	return []ConfigOptions{
 		WithLoadFromEnvVars("CONFIG"),
@@ -74,7 +76,8 @@ func DefaultOptions() []ConfigOptions {
 		WithEnvConfigPathOverload("CONFIG_DIR"),
 		WithLoadDotEnv("./env"),
 		WithExpandEnvVars(),
-		WithValidateByTags(true),
+		WithValidateByTags(),
+		WithValidateByFunc(false, true),
 		Tag("config", "validate"),
 	}
 }
@@ -122,8 +125,8 @@ func (c *Config) initialize() error {
 type ConfigOptions func(*Config) error
 
 //WithLoadFromEnvVars Load Configuration from Environment Variables if they're set.
-// 	- Prefix Require Environment Variables to prefixed with the set prefix (All CAPS)
-// 	- For Nested fields replace `.` with `_` and if key itself has any `_` or `-` replace with `__` (e.g `config.host` to be `CONFIG_HOST`)
+// 	- Require Environment Variables to prefixed with the set prefix (All CAPS)
+// 	- For Nested fields replace `.` with `_` and if key itself has any `_` replace it with `__` (e.g `config.host` to be `CONFIG_HOST`)
 //	- Arrays can be declared in environment variables using
 //		1. comma separated list.
 //		2. json encoded array in a string.
@@ -141,6 +144,7 @@ func WithLoadFromEnvVars(EnvPrefix string) ConfigOptions {
 	}
 }
 
+//WithoutLoadFromEnvVars will not load configuration from Environment Variables.
 func WithoutLoadFromEnvVars() ConfigOptions {
 	return func(h *Config) error {
 		h.envLoad = false
@@ -158,7 +162,7 @@ func WithLoadDotEnv(envDotFilePath string) ConfigOptions {
 	}
 }
 
-//WithLoadDotEnv Allow loading .env file (notice that this is application global not to this config instance only)
+//WithoutLoadDotEnv disable loading .env file into Environment Variables
 func WithoutLoadDotEnv() ConfigOptions {
 	return func(h *Config) error {
 		h.envDotFileLoad = false
@@ -167,7 +171,10 @@ func WithoutLoadDotEnv() ConfigOptions {
 	}
 }
 
-//WithLoadFromConfigFile Load Config from file (notice that file doesn't have an extension as any file with supported extension should work)
+//WithLoadFromConfigFile Load Config from file provided by filepath.
+// - Supported Formats/Extensions (.yml, .yaml, .toml, .json)
+// - ErrIfFileNotFound let you determine behavior when files is not found.
+//   Typically if you rely on Environment Variables you may not need to Error if file is not found.
 func WithLoadFromConfigFile(Filepath string, ErrIfFileNotFound bool) ConfigOptions {
 	return func(h *Config) error {
 		h.configFileLoad = true
@@ -176,6 +183,7 @@ func WithLoadFromConfigFile(Filepath string, ErrIfFileNotFound bool) ConfigOptio
 	}
 }
 
+//WithoutLoadFromConfigFile Disable loading configuration from a file.
 func WithoutLoadFromConfigFile() ConfigOptions {
 	return func(h *Config) error {
 		h.configFileLoad = false
@@ -185,7 +193,7 @@ func WithoutLoadFromConfigFile() ConfigOptions {
 	}
 }
 
-//WithEnvConfigPathOverload Allow to override Config Dir Path with an Env Variable
+//WithEnvConfigPathOverload Allow to override Config file Path with an Env Variable
 func WithEnvConfigPathOverload(configFilepathENV string) ConfigOptions {
 	return func(h *Config) error {
 		h.configFilepathEnv = true
@@ -194,7 +202,7 @@ func WithEnvConfigPathOverload(configFilepathENV string) ConfigOptions {
 	}
 }
 
-//WithEnvConfigPathOverload Allow to override Config Dir Path with an Env Variable
+//WithoutEnvConfigPathOverload Disallow overriding Config file Path with an Env Variable
 func WithoutEnvConfigPathOverload() ConfigOptions {
 	return func(h *Config) error {
 		h.configFilepathEnv = false
@@ -204,13 +212,16 @@ func WithoutEnvConfigPathOverload() ConfigOptions {
 }
 
 //WithExpandEnvVars Expand config values with ${ENVVAR} with the value of ENVVAR in environment variables.
-// You can set default if ENVVAR is not set using the following ${ENVVAR|defaultValue}
+// Example: ${DB_URI}:3201  ==> localhost:3201 (Where $DB_URI was equal "localhost" )
+// You can set default if ENVVAR is not set using the following format ${ENVVAR|defaultValue}
 func WithExpandEnvVars() ConfigOptions {
 	return func(h *Config) error {
 		h.configEnvExpand = true
 		return nil
 	}
 }
+
+//WithoutExpandEnvVars Disable Expanding Environment Variables in Config.
 func WithoutExpandEnvVars() ConfigOptions {
 	return func(h *Config) error {
 		h.configEnvExpand = false
@@ -218,19 +229,40 @@ func WithoutExpandEnvVars() ConfigOptions {
 	}
 }
 
-//WithValidateByTags Control WithValidateByTags function behavior.
-func WithValidateByTags(StopOnFirstErr bool) ConfigOptions {
+//WithValidateByTags Validate using struct tags.
+func WithValidateByTags() ConfigOptions {
 	return func(h *Config) error {
-		h.validateStopOnFirstErr = StopOnFirstErr
 		h.validateUsingTags = true
 		return nil
 	}
 }
 
+//WithoutValidateByTags Disable validate using struct tags.
 func WithoutValidateByTags() ConfigOptions {
 	return func(h *Config) error {
-		h.validateStopOnFirstErr = false
 		h.validateUsingTags = false
+		return nil
+	}
+}
+
+//WithValidateByFunc Validate struct by calling the Validate() function on every type that implement Validatable interface.
+// - stopOnFirstErr will abort validation after the first error.
+// - recursive will call Validate() on nested interfaces where the parent itself is also Validatable.
+func WithValidateByFunc(stopOnFirstErr bool, recursive bool) ConfigOptions {
+	return func(h *Config) error {
+		h.validateFuncStopOnFirstErr = stopOnFirstErr
+		h.validateRecursive = recursive
+		h.validateUsingFunc = true
+		return nil
+	}
+}
+
+//WithoutValidateByFunc Disable validating using Validatable interface.
+func WithoutValidateByFunc() ConfigOptions {
+	return func(h *Config) error {
+		h.validateFuncStopOnFirstErr = false
+		h.validateUsingFunc = false
+		h.validateRecursive = false
 		return nil
 	}
 }

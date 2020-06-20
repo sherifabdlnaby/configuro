@@ -12,7 +12,7 @@ type Validatable interface {
 	Validate() error
 }
 
-//WithValidateByTags WithValidateByTags Struct using Tags and Any Fields that Implements the validatable interface.
+//Validate Validates Struct using Tags and Any Fields that Implements the Validatable interface.
 func (c *Config) Validate(configStruct interface{}) error {
 
 	var errs error
@@ -21,9 +21,11 @@ func (c *Config) Validate(configStruct interface{}) error {
 		errs = multierr.Append(c.validateTags(configStruct), errs)
 	}
 
-	err := recursiveValidate(configStruct, true, c.validateStopOnFirstErr)
-	if err != nil {
-		errs = multierr.Append(errs, err)
+	if c.validateUsingFunc {
+		err := recursiveValidate(configStruct, c.validateRecursive, c.validateFuncStopOnFirstErr)
+		if err != nil {
+			errs = multierr.Append(errs, err)
+		}
 	}
 
 	// cast errs to ErrValidationErrs if it is multierr (So we use the package error instead of 3rd party error type)

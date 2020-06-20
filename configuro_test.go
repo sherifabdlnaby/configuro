@@ -650,7 +650,7 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.WithValidateByTags(true),
+		configuro.WithValidateByTags(),
 		configuro.WithLoadFromEnvVars("X"),
 		configuro.WithLoadDotEnv(""),
 		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
@@ -698,7 +698,7 @@ nested:
     `)
 
 	configLoader, err := configuro.NewConfig(
-		configuro.WithValidateByTags(true),
+		configuro.WithValidateByTags(),
 		configuro.WithLoadFromEnvVars("X"),
 		configuro.WithLoadDotEnv(""),
 		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),

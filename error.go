@@ -7,6 +7,7 @@ import (
 	"gopkg.in/go-playground/validator.v9"
 )
 
+//ErrValidationErrors Error that hold multiple errors.
 type ErrValidationErrors struct {
 	error
 }
@@ -50,6 +51,7 @@ func (e *ErrValidationFunc) Error() string {
 	return fmt.Sprintf(`%s`, e.err)
 }
 
+//Errors Return a list of Errors held inside ErrValidationErrors.
 func (e *ErrValidationErrors) Errors() []error {
 	return multierr.Errors(e.error)
 }
