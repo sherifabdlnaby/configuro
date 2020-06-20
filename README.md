@@ -36,11 +36,12 @@ Configuro is an opinionated configuration loading and validation framework with 
 
 The method defined by Configuro allow you to implement [12-Factor's Config](https://12factor.net/config) and it mimics how many mature applications do configurations (e.g Elastic, Neo4J, etc); and is also fit for containerized applications.
 
-**Only with two lines of code, and zero setting up.**
+------------
+**With Only with two lines of code, and zero setting up** you get loading configuration from Config File, Overwrite values /or rely exclusively on Environment Variables, Expanding values using ${ENV} expressions, and validation tags.
 
 # Loading Configuration
 <p align="center">
-<img width="700px" src="https://user-images.githubusercontent.com/16992394/85208005-4b830780-b32d-11ea-9b41-83a3c87704e3.png">
+<img width="770" src="https://user-images.githubusercontent.com/16992394/85208005-4b830780-b32d-11ea-9b41-83a3c87704e3.png">
 </p>
 
 ### 1. Define Application **configurations** in a struct
