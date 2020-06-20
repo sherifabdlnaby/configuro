@@ -126,6 +126,7 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 		configuro.WithoutLoadDotEnv(),
 		configuro.WithoutLoadFromConfigFile(),
 		configuro.WithoutEnvConfigPathOverload(),
+		configuro.WithoutExpandEnvVars(),
 	)
 	if err != nil {
 		t.Fatal(err)
