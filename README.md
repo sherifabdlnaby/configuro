@@ -3,8 +3,8 @@
 <br/>
 <img width="637px" src="https://user-images.githubusercontent.com/16992394/78989442-e7c1ae80-7b33-11ea-98c6-1d37ed276a3b.png">
 </p>
-<h3 align="center">An opinionated configuration loading and validation framework focused towards Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications.</h3>
-<h6 align="center">Read configurations from Environment Variables exclusively, falls back to config files supporting most common configuration formats. and Supporting Env Expanding and Validation.</h4>
+<h3 align="center">Opinionated configuration loading framework for Containerized and <a href="https://12factor.net/config">12-Factor</a> compliant applications.</h3>
+<h6 align="center">Read configurations from Environment Variables, and/or Configuration Files. With support to Environment Variables Expanding and Validation Methods.</h4>
 <p align="center">
    <a href="https://github.com/avelino/awesome-go#configuration">
       <img src="https://awesome.re/mentioned-badge.svg" alt="Mentioned in Awesome Go">
@@ -16,7 +16,7 @@
       <img src="https://img.shields.io/github/v/tag/sherifabdlnaby/configuro?label=release&amp;sort=semver">
     </a>
    <a>
-      <img src="https://img.shields.io/badge/Go-%3E=v1.13-blue?style=flat&logo=go" alt="Go Version">
+      <img src="https://img.shields.io/badge/Go-%3E=v1.11-blue?style=flat&logo=go" alt="Go Version">
    </a>
     <a>
       <img src="https://github.com/sherifabdlnaby/configuro/workflows/Build/badge.svg">
@@ -32,27 +32,40 @@
 
 # Introduction
 
-Configuro is an opinionated configuration loading and validation library with not very much to configure, ready to be used without much hassle and gluing together libraries.
+Configuro is an opinionated configuration loading and validation framework with not very much to configure. It *defines* a method for loading configurations without so many options for a straight-forward and simple code.
 
-It provides the set of features you would want to implement 12-Factor compliant config and be container ready.
-**It has one defined strategy to load configurations** while only exposing few options for simplicity.
+The method defined by Configuro allow you to implement [12-Factor's Config](https://12factor.net/config) and it mimics how many mature applications do configurations (e.g Elastic, Neo4J, etc); and is also fit for containerized applications.
 
-### Configuration Loading Strategy Briefly
+**Only with two lines of code, and zero setting up.**
 
-1. Application has **a single custom configuration struct** that *Configuro* will `unmarshall` read configuration into.
-2. The configuration is loaded from a file `config`, it can be in `Yaml`, `Json`, `Toml` `ini` or `hcl` format.
-3. Configuration values can be loaded/overloaded **by Environment Variables**.
-    - The key `database.host` can be expressed in environment variables as `DATABASE_HOST`; if set, it will take precedence over config file's value.
-    - You can require all Environment Variables **to be prefixed** with your own string. e.g `database.host` => `APPNAME_DATABASE_HOST`.
-    - If the key itself contains `_` or `-` then replace them with `__` in the Environment Variable.
-    - You can express **Maps** and **Lists** in Environment Variables by JSON encoding them. (e.g `CONFIG: {"a":123, "b": "abc"}`)
-    - You can provide a `.env` file to load environment variables that are not set by the OS.
-4. Configuration Values can have ${ENV} expression that will be expanded at loading time.
-    - Example `host: www.example.com:%{PORT|3306}` with `3306` being the default value if env ${PORT} is not set).
-5. Configuro can validate structs recursively using [Validation Tags](https://godoc.org/github.com/go-playground/validator), or by Implementing `Validatable` Interface `Validate() error`
+# Loading Configuration
+<p align="center">
+<img width="700px" src="https://user-images.githubusercontent.com/16992394/85208005-4b830780-b32d-11ea-9b41-83a3c87704e3.png">
+</p>
+
+### 1. Define Application **configurations** in a struct
+- Which *Configuro* will `Load()` the read configuration into.
+
+### 2. Setting Configuration by **Environment Variables**.
+- Value for key `database.password` can be set by setting `CONFIG_DATABASE_PASSWORD`. (`CONFIG_` default prefix can be changed)
+- If the key itself contains `_` then replace with `__` in the Environment Variable.
+- You can express **Maps** and **Lists** in Environment Variables by JSON encoding them. (e.g `CONFIG: {"a":123, "b": "abc"}`)
+- You can provide a `.env` file to load environment variables that are not set by the OS.
+
+### 3. Setting Configuration by Configuration File.
+- Defaults to `config.yml`; name and extension can be configured.
+- Supported extensions are `.yml`, `.yaml`, `.json`, and `.toml`.
+
+### 4. Support Environment Variables Expanding.
+- Configuration Values can have ${ENV|default} expression that will be expanded at loading time.
+- Example `host: www.example.com:%{PORT|3306}` with `3306` being the default value if env ${PORT} is not set).
+
+### 5. Validate Loaded Values
+- Configuro can validate structs recursively using [Validation Tags](https://godoc.org/github.com/go-playground/validator).
+- By Implementing `Validatable` Interface `Validate() error`.
 
 #### Notes
-- 📣 You can give up the config file option entirely and rely exclusively on Environment Variables.
+- 📣 Values' precedence is `OS EnvVar` > `.env EnvVars` > `Config File` > `Value set in Struct before loading.`
 
 
 -------------------------------------------------------------------------
@@ -67,7 +80,7 @@ import "github.com/sherifabdlnaby/configuro"
 
 # Usage
 
-### 1. Start with Defining Your Config Struct
+### 1. Define You Config Struct.
 This is the struct you're going to use to retrieve your config values in-code.
 ```go
 type Config struct {
@@ -87,7 +100,6 @@ type Config struct {
 - All [mapstructure](https://github.com/mitchellh/mapstructure) tags apply to `config` tag for unmarshalling.
 - Fields must be public to be accessible by Configuro.
 
-
 ### 2. Create and Configure the `Configuro.Config` object.
 
 ```go
@@ -104,36 +116,37 @@ type Config struct {
 - Create Configuro Object Passing to the constructor `opts ...configuro.ConfigOption` which is explained in the below sections.
 - This should happen as early as possible in the application.
 
-### 3. Loading from Configuration Files
-
-- Upon setting up you will declare the config `filename` and its `directory` without needing to specify the extension or format, Configuro will look if a file with supported format exists and attempt loading from it.
-    - Default `filename`  => "config"
-    - Default `directory` => "." (current directory)
-    - So, by default, any of `config.yml`, `config.json`, `config.toml`, etc are looked up in the `directory` to load config.
-- Supported formats are `Yaml`, `Json`, `Toml` `ini` or `hcl`.
-- Config file directory can be overloaded with a defined Environment Variable.
-    - Default: `PREFIX_CONFIG_DIR`.
-
-The above settings can be changed upon constructing the configuro object via passing these options.
-```go
-    configuro.LoadFromConfigFile(enabled, fileName, fileDirPath)
-    configuro.OverloadConfigPathWithEnv(enabled, envVarName)
-```
-
-### 4. Loading from Environment Variables
+### 3. Loading from Environment Variables
 
 - Values found in Environment Variables take precedence over values found in config file.
-- The key `database.host` can be expressed in environment variables as `DATABASE_HOST`.
-- If the key itself contains `_` or `-` then replace them with `__` in the Environment Variable.
-- You can require all Environment Variables **to be prefixed** with your own string. e.g `database.host` => `APPNAME_DATABASE_HOST`.
+- The key `database.host` can be expressed in environment variables as `CONFIG_DATABASE_HOST`.
+- If the key itself contains `_`  then replace them with `__` in the Environment Variable.
+- `CONFIG_` prefix can be configured.
 - You can express **Maps** and **Lists** in Environment Variables by JSON encoding them. (e.g `CONFIG: {"a":123, "b": "abc"}`)
 - You can provide a `.env` file to load environment variables that are not set by the OS. (notice that .env is loaded globally in the application scope)
-- Loading from Environment is **Enabled by default with no prefix** when constructing Configuro.
 
 The above settings can be changed upon constructing the configuro object via passing these options.
 ```go
-    configuro.LoadFromEnvironmentVariables(enabled, prefix)
-    configuro.LoadDotEnvFile(enabled, envDotFilePath)
+    configuro.WithLoadFromEnvVars(EnvPrefix string)  // Enable Env loading and set Prefix.
+    configuro.WithoutLoadFromEnvVars()               // Disable Env Loading Entirely
+    configuro.WithLoadDotEnv(envDotFilePath string)  // Enable loading .env into Environment Variables
+    configuro.WithoutLoadDotEnv()                    // Disable loading .env
+```
+
+### 4. Loading from Configuration Files
+- Upon setting up you will declare the config `filepath`.
+    - Default `filename`  => "config.yml"
+- Supported formats are `Yaml`, `Json`, and `Toml`.
+- Config file directory can be overloaded with a defined Environment Variable.
+    - Default: `CONFIG_DIR`.
+- If file **was not found** Configuro won't raise an error unless configured too. This is you can rely 100% on Environment Variables.
+
+The above settings can be changed upon constructing the configuro object via passing these options.
+```go
+    configuro.WithLoadFromConfigFile(Filepath string, ErrIfFileNotFound bool)    // Enable Config File Load
+    configuro.WithoutLoadFromConfigFile()                                        // Disable Config File Load
+    configuro.WithEnvConfigPathOverload(configFilepathENV string)                // Enable Overloading Path with ENV var.
+    configuro.WithoutEnvConfigPathOverload()                                     // Disable Overloading Path with ENV var.
 ```
 
 ### 5. Expanding Environment Variables in Config
@@ -149,7 +162,8 @@ config:
 
 The above settings can be changed upon constructing the configuro object via passing these options.
 ```go
-    configuro.ExpandEnvironmentVariables(enabled)
+    configuro.WithExpandEnvVars()       // Enable Expanding
+    configuro.WithoutExpandEnvVars()    // Disable Expanding
 ```
 
 ### 6. Validate Struct
@@ -164,18 +178,27 @@ The above settings can be changed upon constructing the configuro object via pas
 - Configuro Validate Config Structs using two methods.
     1. Using [Validation Tags](https://godoc.org/github.com/go-playground/validator) for quick validations.
     2. Using `Validatable` Interface that will be called on any type that implements it recursively, also on each element of a Map or a Slice.
-- Validation returns an error of type [multierror](https://github.com/hashicorp/go-multierror) specifying each field that error-ed.
+- Validation returns an error of type configuro.ErrValidationErrors if more than error occurred.
 - It can be configured to not recursively validate types with `Validatable` Interface. (default: recursively)
 - It can be configured to stop at the first error. (default: false)
 - It can be configured to not use Validation Tags. (default: false)
 The above settings can be changed upon constructing the configuro object via passing these options.
 ```go
-    configuro.Validate(validateStopOnFirstErr, validateRecursive, validateUsingTags)
+    configuro.WithValidateByTags()
+    configuro.WithoutValidateByTags()
+    configuro.WithValidateByFunc(stopOnFirstErr bool, recursive bool)
+    configuro.WithoutValidateByFunc()
 ```
 
 ### 7. Miscellaneous
 
 - `config` and `validate` tag can be renamed using `configuro.Tag(structTag, validateTag)` construction option.
+
+# Built on top of
+- [spf13/viper](https://github.com/spf13/viper)
+- [mitchellh/mapstructure](github.com/mitchellh/mapstructure)
+- [go-playground/validator](https://github.com/go-playground/validator)
+- [joho/godotenv](https://github.com/joho/godotenv)
 
 # License
 [MIT License](https://raw.githubusercontent.com/sherifabdlnaby/configuro/master/LICENSE)
