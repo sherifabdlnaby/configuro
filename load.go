@@ -53,7 +53,12 @@ func (c *Config) bindAllEnvsWithPrefix() {
 		if match != nil {
 			matchUnescaper := strings.NewReplacer("__", "_", "_", ".")
 			matchUnescaped := matchUnescaper.Replace(string(match[1]))
-			c.viper.BindEnv(matchUnescaped)
+			err := c.viper.BindEnv(matchUnescaped)
+
+			if err != nil {
+				//Should never happen tho.
+				panic(err)
+			}
 		}
 	}
 }
