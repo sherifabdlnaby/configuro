@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sherifabdlnaby/configuro"
@@ -256,6 +257,24 @@ func TestLoadFromFileThatDoesntExist(t *testing.T) {
 				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
 			}
 		})
+	}
+}
+
+func TestLoadFromFileThatDoesntExistError(t *testing.T) {
+	configLoader, err := configuro.NewConfig(
+		configuro.WithLoadFromConfigFile("filethatdoesntexist.yml", true),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = configLoader.Load(&Example{})
+
+	if err == nil {
+		t.Fatal("Load should raise error if ErrIfFileNotFound was set to true")
+	}
+	if !strings.Contains(err.Error(), "error config file not found") {
+		t.Fatal("Load should raise not found error if ErrIfFileNotFound was set to true")
 	}
 }
 
