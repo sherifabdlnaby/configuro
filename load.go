@@ -29,7 +29,7 @@ func (c *Config) Load(configStruct interface{}) error {
 				return fmt.Errorf("error reading config data: %v", err)
 			}
 
-			if c.configFileErrIfNotFound && pathErr.Op == "open'" {
+			if c.configFileErrIfNotFound && pathErr.Op == "open" {
 				return fmt.Errorf("error config file not found. err: %v", err)
 			}
 		}
