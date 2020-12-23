@@ -1,4 +1,4 @@
-module github.com/sherifabdlnaby/configuro
+module github.com/lorentz-wu/configuro
 
 go 1.15
 
