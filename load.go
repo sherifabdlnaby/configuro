@@ -14,6 +14,15 @@ import (
 
 //Load load config into supported struct.
 func (c *Config) Load(configStruct interface{}) error {
+	return c.loadInternal("", configStruct)
+}
+
+//Load load config with key into supported struct.
+func (c *Config) LoadKey(key string, configStruct interface{}) error {
+	return c.loadInternal(key, configStruct)
+}
+
+func (c *Config) loadInternal(key string, configStruct interface{}) error {
 	var err error
 
 	// Bind Env Vars
@@ -36,7 +45,11 @@ func (c *Config) Load(configStruct interface{}) error {
 	}
 
 	// Unmarshalling
-	err = c.viper.Unmarshal(configStruct, c.decodeHook, setTagName(c.tag))
+	if key == "" {
+		err = c.viper.Unmarshal(configStruct, c.decodeHook, setTagName(c.tag))
+	} else {
+		err = c.viper.UnmarshalKey(key, configStruct, c.decodeHook, setTagName(c.tag))
+	}
 
 	if err != nil {
 		return fmt.Errorf("error unmarshalling config: %v", err)

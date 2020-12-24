@@ -46,6 +46,13 @@ type test struct {
 	expected Example
 }
 
+type testkey struct {
+	name     string
+	config   *configuro.Config
+	key      string
+	expected Key
+}
+
 func (k Key) Validate() error {
 	if k.A != k.B {
 		return fmt.Errorf("failed to validate key because A(%s) != B(%s)", k.A, k.B)
@@ -346,6 +353,61 @@ nested:
 				example.Nested.Key_X.A != test.expected.Nested.Key_X.A ||
 				example.Nested.Key_X.B != test.expected.Nested.Key_X.B {
 				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+			}
+		})
+	}
+}
+
+func TestLoadKey(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "TestLoadFromFileOnly*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+nested:
+    key:
+        a: A
+        b: B
+    key_a:
+        a: AA
+        b: AB
+    key-b:
+        a: BA
+        b: BB
+    `)
+
+	configLoader, err := configuro.NewConfig(
+		configuro.WithLoadFromEnvVars("X"),
+		configuro.WithLoadDotEnv(""),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithEnvConfigPathOverload(""),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []testkey{
+		{name: "LoadKey", config: configLoader, key: "nested.key", expected: Key{A: "A", B: "B"}},
+		{name: "LoadKey", config: configLoader, key: "nested.key_a", expected: Key{A: "AA", B: "AB"}},
+		{name: "LoadKey", config: configLoader, key: "nested.key-b", expected: Key{A: "BA", B: "BB"}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			k := &Key{}
+			err := test.config.LoadKey(test.key, k)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if k.A != test.expected.A || k.B != test.expected.B {
+				t.Fatalf("LoadKey Loaded Values doesn't equal expected values. loaded: %v, expected: %v", k, test.expected)
 			}
 		})
 	}
