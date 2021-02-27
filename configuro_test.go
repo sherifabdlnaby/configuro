@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -707,6 +708,83 @@ Object:
 			if example.Object.KeyA != test.expected.Object.KeyA ||
 				example.Object.KeyB != test.expected.Object.KeyB {
 				t.Fatalf("Loaded Values doesn't equal expected values. loaded: %v, expected: %v", example, test.expected)
+			}
+		})
+	}
+}
+
+func TestChangeKeyDelimiter(t *testing.T) {
+	configFileYaml, err := ioutil.TempFile("", "TestChangeTagName*.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		configFileYaml.Close()
+		os.RemoveAll(configFileYaml.Name())
+	}()
+
+	// Write Config to File
+	configFileYaml.WriteString(`
+Object:
+  dot.key: "aa"
+  key: "bb"
+    `)
+
+	type Obj struct {
+		Object map[string]string
+	}
+
+	configLoaderDefaultDelimiter, err := configuro.NewConfig(
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	configLoaderNewDelimiter, err := configuro.NewConfig(
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.KeyDelimiter("::"),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name    string
+		config  *configuro.Config
+		want    Obj
+		wantErr bool
+	}{
+		{
+			name:   "default key delimiter",
+			config: configLoaderDefaultDelimiter,
+			want: Obj{
+				Object: map[string]string{
+					"key": "bb",
+				}},
+			wantErr: true,
+		},
+		{
+			name:   "new key delimiter",
+			config: configLoaderNewDelimiter,
+			want: Obj{
+				Object: map[string]string{
+					"dot.key": "aa",
+					"key":     "bb",
+				}},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			obj := &Obj{}
+			err := tt.config.Load(obj)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Load() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(*obj, tt.want) {
+				t.Errorf("Load() obj = %v, want %v", obj, tt.want)
 			}
 		})
 	}
