@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+
+	//"reflect"
 	"strings"
 	"testing"
 
@@ -714,7 +716,7 @@ Object:
 }
 
 func TestChangeKeyDelimiter(t *testing.T) {
-	configFileYaml, err := ioutil.TempFile("", "TestChangeTagName*.yml")
+	configFileYaml, err := ioutil.TempFile("", "TestChangeKeyDelimiter*.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -735,14 +737,22 @@ Object:
 	}
 
 	configLoaderDefaultDelimiter, err := configuro.NewConfig(
-		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithoutEnvConfigPathOverload(),
+		configuro.WithoutExpandEnvVars(),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithoutLoadFromEnvVars(),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), true),
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	configLoaderNewDelimiter, err := configuro.NewConfig(
-		configuro.WithLoadFromConfigFile(configFileYaml.Name(), false),
+		configuro.WithoutEnvConfigPathOverload(),
+		configuro.WithoutExpandEnvVars(),
+		configuro.WithoutLoadDotEnv(),
+		configuro.WithoutLoadFromEnvVars(),
+		configuro.WithLoadFromConfigFile(configFileYaml.Name(), true),
 		configuro.KeyDelimiter("::"),
 	)
 	if err != nil {
