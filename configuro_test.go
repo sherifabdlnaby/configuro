@@ -7,8 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-
-	//"reflect"
 	"strings"
 	"testing"
 
@@ -181,7 +179,7 @@ func TestLoadFromEnvVarsOnly(t *testing.T) {
 func TestLoadDotEnv(t *testing.T) {
 
 	// Clear Env that may be set up by previous tests. So that .env values are not overridden
-	os.Clearenv()
+	//os.Clearenv()
 
 	dotEnvFile, err := ioutil.TempFile("", "*.env")
 	if err != nil {
@@ -419,7 +417,7 @@ nested:
 //TODO Too long, try make it better.
 func TestOverloadConfigDirWithEnv(t *testing.T) {
 
-	os.Clearenv()
+	//os.Clearenv()
 
 	err := os.MkdirAll(os.TempDir()+"/conf/", 0777)
 	if err != nil {
@@ -785,6 +783,7 @@ Object:
 			wantErr: false,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			obj := &Obj{}
