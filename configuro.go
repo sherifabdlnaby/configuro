@@ -33,6 +33,7 @@ type Config struct {
 	validateUsingFunc          bool
 	validateTag                string
 	tag                        string
+	keyDelimiter               string
 	viper                      *viper.Viper
 	validator                  *validator.Validate
 	validatorTrans             ut.Translator
@@ -79,13 +80,14 @@ func DefaultOptions() []ConfigOptions {
 		WithValidateByTags(),
 		WithValidateByFunc(false, true),
 		Tag("config", "validate"),
+		KeyDelimiter("."),
 	}
 }
 
 func (c *Config) initialize() error {
 
 	// Init Viper
-	c.viper = viper.New()
+	c.viper = viper.NewWithOptions(viper.KeyDelimiter(c.keyDelimiter))
 
 	if c.envDotFileLoad {
 		// load .env vars
@@ -272,6 +274,14 @@ func Tag(structTag, validateTag string) ConfigOptions {
 	return func(h *Config) error {
 		h.tag = structTag
 		h.validateTag = validateTag
+		return nil
+	}
+}
+
+//KeyDelimiter Сhange default key delimiter.
+func KeyDelimiter(keyDelimiter string) ConfigOptions {
+	return func(h *Config) error {
+		h.keyDelimiter = keyDelimiter
 		return nil
 	}
 }
