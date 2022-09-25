@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-//Load load config into supported struct.
+// Load load config into supported struct.
 func (c *Config) Load(configStruct interface{}) error {
 	return c.loadInternal("", configStruct)
 }
 
-//Load load config with key into supported struct.
+// Load load config with key into supported struct.
 func (c *Config) LoadKey(key string, configStruct interface{}) error {
 	return c.loadInternal(key, configStruct)
 }
@@ -82,7 +82,7 @@ func setTagName(hook string) viper.DecoderConfigOption {
 	}
 }
 
-//StringJSONArrayOrSlicesToConfig will convert Json Encoded Strings to Maps or Slices, Used Primarily to support Slices and Maps in Environment variables
+// StringJSONArrayOrSlicesToConfig will convert Json Encoded Strings to Maps or Slices, Used Primarily to support Slices and Maps in Environment variables
 func stringJSONArrayToSlice() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
 	return func(
 		f reflect.Kind,
@@ -168,7 +168,7 @@ func stringJSONObjToStruct() func(f reflect.Kind, t reflect.Kind, data interface
 }
 
 func expandEnvVariablesWithDefaults() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
-	var configWithEnvExpand = regexp.MustCompile(`(\${([\w@.]+)(\|([\w@.]+)?)?})`)
+	var configWithEnvExpand = regexp.MustCompile(`(\${([\w@.]+)(\|([\w@.:,]+)?)?})`)
 	var exactMatchEnvExpand = regexp.MustCompile(`^` + configWithEnvExpand.String() + `$`)
 	return func(
 		f reflect.Kind,
