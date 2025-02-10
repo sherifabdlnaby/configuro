@@ -168,7 +168,7 @@ func stringJSONObjToStruct() func(f reflect.Kind, t reflect.Kind, data interface
 }
 
 func expandEnvVariablesWithDefaults() func(f reflect.Kind, t reflect.Kind, data interface{}) (interface{}, error) {
-	var configWithEnvExpand = regexp.MustCompile(`(\${([\w@.]+)(\|([\w@.:,]+)?)?})`)
+	var configWithEnvExpand = regexp.MustCompile(`(\${([\w@.]+)(\|([\w@./:,]+)?)?})`)
 	var exactMatchEnvExpand = regexp.MustCompile(`^` + configWithEnvExpand.String() + `$`)
 	return func(
 		f reflect.Kind,
