@@ -113,7 +113,10 @@ func recursiveValidate(obj interface{}, recursive bool, returnOnFirstErr bool) e
 
 	// Call WithValidateByTags on the value it self
 	if val.CanInterface() {
-		validatable, ok := val.Interface().(Validatable)
+		validatable, ok := obj.(Validatable)
+		if !ok {
+			validatable, ok = val.Interface().(Validatable)
+		}
 		if ok {
 			err := validatable.Validate()
 			if err != nil {

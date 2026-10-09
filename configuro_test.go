@@ -2,6 +2,7 @@
 package configuro_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -1061,6 +1062,164 @@ nested:
 			if !ok {
 				t.Fatal("Validation using validator interface Returned Wrong Error Type.")
 			}
+		}
+	}
+}
+
+type pointerValidator struct {
+	First  *pointerValidator
+	Second *pointerValidator
+	name   string
+	calls  *[]string
+	err    error
+}
+
+func (v *pointerValidator) Validate() error {
+	*v.calls = append(*v.calls, v.name)
+	return v.err
+}
+
+type valueValidator struct {
+	calls *int
+}
+
+func (v valueValidator) Validate() error {
+	*v.calls++
+	return nil
+}
+
+func TestValidatePointerReceivers(t *testing.T) {
+	loader, err := configuro.NewConfig(configuro.WithoutValidateByTags())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantErr := errors.New("invalid configuration")
+	placements := []struct {
+		name string
+		wrap func(*pointerValidator) interface{}
+	}{
+		{"root", func(v *pointerValidator) interface{} { return v }},
+		{"field", func(v *pointerValidator) interface{} { return &struct{ Value *pointerValidator }{v} }},
+		{"map", func(v *pointerValidator) interface{} { return map[string]*pointerValidator{"value": v} }},
+		{"slice", func(v *pointerValidator) interface{} { return []*pointerValidator{v} }},
+		{"array", func(v *pointerValidator) interface{} { return [1]*pointerValidator{v} }},
+		{"interface", func(v *pointerValidator) interface{} { return &struct{ Value interface{} }{v} }},
+	}
+	for _, placement := range placements {
+		t.Run(placement.name, func(t *testing.T) {
+			var calls []string
+			value := &pointerValidator{name: "value", calls: &calls, err: wantErr}
+			assertValidationErrors(t, loader.Validate(placement.wrap(value)), []error{wantErr})
+			if !reflect.DeepEqual(calls, []string{"value"}) {
+				t.Fatalf("validation calls = %v, want [value]", calls)
+			}
+		})
+		t.Run(placement.name+"/nil", func(t *testing.T) {
+			assertValidationErrors(t, loader.Validate(placement.wrap(nil)), nil)
+		})
+	}
+}
+
+func TestValidateReceiverWrappers(t *testing.T) {
+	loader, err := configuro.NewConfig(configuro.WithoutValidateByTags())
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrappers := []struct {
+		name string
+		wrap func(valueValidator) interface{}
+	}{
+		{"value", func(v valueValidator) interface{} { return v }},
+		{"pointer", func(v valueValidator) interface{} { return &v }},
+		{"double_pointer", func(v valueValidator) interface{} { p := &v; return &p }},
+		{"interface_pointer", func(v valueValidator) interface{} { var p interface{} = v; return &p }},
+	}
+	for _, wrapper := range wrappers {
+		t.Run(wrapper.name, func(t *testing.T) {
+			calls := 0
+			assertValidationErrors(t, loader.Validate(wrapper.wrap(valueValidator{calls: &calls})), nil)
+			if calls != 1 {
+				t.Fatalf("validation calls = %d, want 1", calls)
+			}
+		})
+	}
+	var calls []string
+	value := &pointerValidator{name: "value", calls: &calls}
+	var wrapped interface{} = value
+	for _, input := range []interface{}{&value, &wrapped} {
+		calls = nil
+		assertValidationErrors(t, loader.Validate(input), nil)
+		if !reflect.DeepEqual(calls, []string{"value"}) {
+			t.Fatalf("validation calls = %v, want [value]", calls)
+		}
+	}
+}
+
+func TestValidatePointerReceiverTraversal(t *testing.T) {
+	firstErr := errors.New("invalid first child")
+	secondErr := errors.New("invalid second child")
+	parentErr := errors.New("invalid parent")
+	tests := []struct {
+		name       string
+		recursive  bool
+		stopFirst  bool
+		firstErr   error
+		secondErr  error
+		wantCalls  []string
+		wantErrors []error
+	}{
+		{"no_recursion", false, false, firstErr, secondErr, []string{"parent"}, []error{parentErr}},
+		{"all_errors", true, false, firstErr, secondErr, []string{"first", "second", "parent"}, []error{firstErr, secondErr, parentErr}},
+		{"stop_first_child", true, true, firstErr, secondErr, []string{"first"}, []error{firstErr}},
+		{"stop_second_child", true, true, nil, secondErr, []string{"first", "second"}, []error{secondErr}},
+		{"stop_parent", true, true, nil, nil, []string{"first", "second", "parent"}, []error{parentErr}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loader, err := configuro.NewConfig(configuro.WithoutValidateByTags(), configuro.WithValidateByFunc(test.stopFirst, test.recursive))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var calls []string
+			parent := &pointerValidator{
+				First:  &pointerValidator{name: "first", calls: &calls, err: test.firstErr},
+				Second: &pointerValidator{name: "second", calls: &calls, err: test.secondErr},
+				name:   "parent", calls: &calls, err: parentErr,
+			}
+			assertValidationErrors(t, loader.Validate(parent), test.wantErrors)
+			if !reflect.DeepEqual(calls, test.wantCalls) {
+				t.Fatalf("validation calls = %v, want %v", calls, test.wantCalls)
+			}
+		})
+	}
+}
+
+func assertValidationErrors(t *testing.T, err error, want []error) {
+	t.Helper()
+	if len(want) == 0 {
+		if err != nil {
+			t.Fatalf("unexpected validation error: %v", err)
+		}
+		return
+	}
+	got := []error{err}
+	if len(want) > 1 {
+		group, ok := err.(configuro.ErrValidationErrors)
+		if !ok {
+			t.Fatalf("validation error = %T, want configuro.ErrValidationErrors", err)
+		}
+		got = group.Errors()
+	}
+	if len(got) != len(want) {
+		t.Fatalf("validation error count = %d, want %d", len(got), len(want))
+	}
+	for i, item := range got {
+		wrapped, ok := item.(*configuro.ErrValidationFunc)
+		if !ok {
+			t.Fatalf("validation error %d = %T, want *configuro.ErrValidationFunc", i, item)
+		}
+		if wrapped.Unwrap() != want[i] {
+			t.Fatalf("validation error %d = %v, want %v", i, wrapped.Unwrap(), want[i])
 		}
 	}
 }
